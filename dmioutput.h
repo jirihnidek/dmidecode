@@ -19,6 +19,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#include <stdbool.h>
 #include "dmidecode.h"
 
 void pr_comment(const char *format, ...);
@@ -30,5 +31,7 @@ void pr_subattr(const char *name, const char *format, ...);
 void pr_list_start(const char *name, const char *format, ...);
 void pr_list_item(const char *format, ...);
 void pr_list_end(void);
-void pr_sep(void);
+void pr_sep(bool end_of_table);
 void pr_struct_err(const char *format, ...);
+
+void pr_set_json_format(void);

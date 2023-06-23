@@ -70,6 +70,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <errno.h>
@@ -4403,6 +4404,7 @@ static void dmi_firmware_components(u8 count, const u8 *p)
 static void dmi_decode(const struct dmi_header *h, u16 ver)
 {
 	const u8 *data = h->data;
+	bool end_of_table = false;
 
 	/*
 	 * Note: DMI types 37 and 42 are untested
@@ -4432,11 +4434,17 @@ static void dmi_decode(const struct dmi_header *h, u16 ver)
 			dmi_bios_rom_size(data[0x09], h->length < 0x1A ? 16 : WORD(data + 0x18));
 			pr_list_start("Characteristics", NULL);
 			dmi_bios_characteristics(QWORD(data + 0x0A));
-			pr_list_end();
-			if (h->length < 0x13) break;
+			if (h->length < 0x13) {
+				pr_list_end();
+				break;
+			}
 			dmi_bios_characteristics_x1(data[0x12]);
-			if (h->length < 0x14) break;
+			if (h->length < 0x14) {
+				pr_list_end();
+				break;
+			}
 			dmi_bios_characteristics_x2(data[0x13]);
+			pr_list_end();
 			if (h->length < 0x18) break;
 			if (data[0x14] != 0xFF && data[0x15] != 0xFF)
 				pr_attr("BIOS Revision", "%u.%u",
@@ -5480,6 +5488,7 @@ static void dmi_decode(const struct dmi_header *h, u16 ver)
 
 		case 127:
 			pr_handle_name("End Of Table");
+			end_of_table = true;
 			break;
 
 		default:
@@ -5491,7 +5500,7 @@ static void dmi_decode(const struct dmi_header *h, u16 ver)
 				h->type >= 128 ? "OEM-specific" : "Unknown");
 			dmi_dump(h);
 	}
-	pr_sep();
+	pr_sep(end_of_table);
 }
 
 static void to_dmi_header(struct dmi_header *h, u8 *data)
@@ -5662,6 +5671,9 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		data = next;
 	}
 
+	if (opt.flags & FLAG_JSON)
+		printf("{\n");
+
 	/* Second pass: Actually decode the data */
 	i = 0;
 	data = buf;
@@ -5718,7 +5730,8 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		{
 			if (display && !(opt.flags & FLAG_QUIET))
 				pr_struct_err("<TRUNCATED>");
-			pr_sep();
+			if (!(opt.flags & FLAG_JSON))
+				pr_sep(false);
 			data = next;
 			break;
 		}
@@ -5732,10 +5745,11 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 			if (opt.flags & FLAG_DUMP)
 			{
 				dmi_dump(&h);
-				pr_sep();
+				pr_sep(false);
 			}
-			else
+			else {
 				dmi_decode(&h, ver);
+			}
 		}
 		else if (opt.string != NULL
 		      && opt.string->type == h.type)
@@ -5747,6 +5761,9 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		if (h.type == 127 && (flags & FLAG_STOP_AT_EOT))
 			break;
 	}
+
+	if (opt.flags & FLAG_JSON)
+		printf("}\n");
 
 	/*
 	 * SMBIOS v3 64-bit entry points do not announce a structures count,
@@ -5780,7 +5797,7 @@ static u8 *dmi_table_get(off_t base, u32 *len, u16 num, u32 ver,
 		pr_comment("fully supported by this version of dmidecode.");
 	}
 
-	if (!(opt.flags & FLAG_QUIET))
+	if (!(opt.flags & FLAG_QUIET) && !(opt.flags & FLAG_JSON))
 	{
 		if (opt.type == NULL)
 		{
@@ -5791,7 +5808,7 @@ static u8 *dmi_table_get(off_t base, u32 *len, u16 num, u32 ver,
 				pr_info("Table at 0x%08llX.",
 					(unsigned long long)base);
 		}
-		pr_sep();
+		pr_sep(false);
 	}
 
 	if ((flags & FLAG_NO_FILE_OFFSET) || (opt.flags & FLAG_FROM_DUMP))
@@ -6166,6 +6183,9 @@ int main(int argc, char * const argv[])
 		printf("%s\n", VERSION);
 		goto exit_free;
 	}
+
+	if (opt.flags & FLAG_JSON)
+		pr_set_json_format();
 
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);
