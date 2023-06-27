@@ -21,6 +21,10 @@
 
 #include "dmidecode.h"
 
+#define TEXT_FORMAT     1
+#define JSON_FORMAT     2
+
+void pr_set_json_format(void);
 void pr_printf(const char *format, ...);
 void pr_comment(const char *format, ...);
 void pr_info(const char *format, ...);

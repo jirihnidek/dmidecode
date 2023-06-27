@@ -23,103 +23,115 @@
 #include <stdio.h>
 #include "dmioutput.h"
 
+static int output_format = TEXT_FORMAT;
+
+void pr_set_json_format(void)
+{
+	output_format = JSON_FORMAT;
+}
+
 void pr_printf(const char *format, ...)
 {
-	va_list args;
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
+	if (output_format == TEXT_FORMAT) {
+		va_list args;
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+	}
 }
 
 void pr_comment(const char *format, ...)
 {
 	va_list args;
-
-	printf("# ");
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	printf("\n");
+	if (output_format == TEXT_FORMAT) {
+		printf("# ");
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+		printf("\n");
+	}
 }
 
 void pr_info(const char *format, ...)
 {
 	va_list args;
-
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	printf("\n");
+	if (output_format == TEXT_FORMAT) {
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+		printf("\n");
+	}
 }
 
 void pr_handle(const struct dmi_header *h)
 {
-	printf("Handle 0x%04X, DMI type %d, %d bytes\n",
-	       h->handle, h->type, h->length);
+	if (output_format == TEXT_FORMAT) {
+		printf("Handle 0x%04X, DMI type %d, %d bytes\n",
+			   h->handle, h->type, h->length);
+	}
 }
 
 void pr_handle_name(const char *format, ...)
 {
 	va_list args;
-
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	printf("\n");
+	if (output_format == TEXT_FORMAT) {
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+		printf("\n");
+	}
 }
 
 void pr_attr(const char *name, const char *format, ...)
 {
 	va_list args;
-
-	printf("\t%s: ", name);
-
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	printf("\n");
+	if (output_format == TEXT_FORMAT) {
+		printf("\t%s: ", name);
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+		printf("\n");
+	}
 }
 
 void pr_subattr(const char *name, const char *format, ...)
 {
 	va_list args;
-
-	printf("\t\t%s: ", name);
-
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	printf("\n");
+	if (output_format == TEXT_FORMAT) {
+		printf("\t\t%s: ", name);
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+		printf("\n");
+	}
 }
 
 void pr_list_start(const char *name, const char *format, ...)
 {
 	va_list args;
-
-	printf("\t%s:", name);
-
-	/* format is optional, skip value if not provided */
-	if (format)
-	{
-		printf(" ");
-		va_start(args, format);
-		vprintf(format, args);
-		va_end(args);
+	if (output_format == TEXT_FORMAT) {
+		printf("\t%s:", name);
+		/* format is optional, skip value if not provided */
+		if (format) {
+			printf(" ");
+			va_start(args, format);
+			vprintf(format, args);
+			va_end(args);
+		}
+		printf("\n");
 	}
-	printf("\n");
-
 }
 
 void pr_list_item(const char *format, ...)
 {
 	va_list args;
-
-	printf("\t\t");
-
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	printf("\n");
+	if (output_format == TEXT_FORMAT) {
+		printf("\t\t");
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+		printf("\n");
+	}
 }
 
 void pr_list_end(void)
@@ -129,17 +141,19 @@ void pr_list_end(void)
 
 void pr_sep(void)
 {
-	printf("\n");
+	if (output_format == TEXT_FORMAT) {
+		printf("\n");
+	}
 }
 
 void pr_struct_err(const char *format, ...)
 {
 	va_list args;
-
-	printf("\t");
-
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	printf("\n");
+	if (output_format == TEXT_FORMAT) {
+		printf("\t");
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+		printf("\n");
+	}
 }

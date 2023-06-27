@@ -70,6 +70,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <json-c/json.h>
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <errno.h>
@@ -6130,6 +6131,7 @@ int main(int argc, char * const argv[])
 	size_t size;
 	int efi;
 	u8 *buf = NULL;
+    json_object *root = NULL;
 
 	/*
 	 * We don't want stdout and stderr to be mixed up if both are
@@ -6166,6 +6168,11 @@ int main(int argc, char * const argv[])
 		printf("%s\n", VERSION);
 		goto exit_free;
 	}
+
+    if (opt.flags & FLAG_JSON) {
+        pr_set_json_format();
+        root = json_object_new_object();
+    }
 
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);
@@ -6325,6 +6332,8 @@ done:
 	free(buf);
 exit_free:
 	free(opt.type);
+
+    json_object_put(root);
 
 	return ret;
 }
