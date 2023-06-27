@@ -30,6 +30,9 @@ CFLAGS += -D_FILE_OFFSET_BITS=64
 # Pass linker flags here (can be set from environment too)
 LDFLAGS ?=
 
+# Extend linker flags specific for each binary (only dmidecode ATM)
+DMIDECODE_LDFLAGS = $(LDFLAGS) -ljson-c
+
 DESTDIR =
 prefix  = /usr/local
 sbindir = $(prefix)/sbin
@@ -63,7 +66,7 @@ all : $(PROGRAMS)
 #
 
 dmidecode : dmidecode.o dmiopt.o dmioem.o dmioutput.o util.o
-	$(CC) $(LDFLAGS) dmidecode.o dmiopt.o dmioem.o dmioutput.o util.o -o $@
+	$(CC) $(DMIDECODE_LDFLAGS) dmidecode.o dmiopt.o dmioem.o dmioutput.o util.o -o $@
 
 biosdecode : biosdecode.o util.o
 	$(CC) $(LDFLAGS) biosdecode.o util.o -o $@
