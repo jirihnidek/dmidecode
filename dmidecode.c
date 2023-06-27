@@ -464,7 +464,7 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 		if (print_cb)
 			print_cb(attr, "Not Present");
 		else
-			printf("Not Present\n");
+			pr_printf("Not Present\n");
 		return;
 	}
 	if (only0x00)
@@ -472,7 +472,7 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 		if (print_cb)
 			print_cb(attr, "Not Settable");
 		else
-			printf("Not Settable\n");
+			pr_printf("Not Settable\n");
 		return;
 	}
 
@@ -492,7 +492,7 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 				p[3], p[2], p[1], p[0], p[5], p[4], p[7], p[6],
 				p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 		else
-			printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
+			pr_printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
 				p[3], p[2], p[1], p[0], p[5], p[4], p[7], p[6],
 				p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 	}
@@ -504,7 +504,7 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
 				p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 		else
-			printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
+			pr_printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
 				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
 				p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 	}
@@ -1350,14 +1350,14 @@ static void dmi_processor_frequency(const char *attr, const u8 *p)
 		if (attr)
 			pr_attr(attr, "%u MHz", code);
 		else
-			printf("%u MHz\n", code);
+			pr_printf("%u MHz\n", code);
 	}
 	else
 	{
 		if (attr)
 			pr_attr(attr, "Unknown");
 		else
-			printf("Unknown\n");
+			pr_printf("Unknown\n");
 	}
 }
 
@@ -5516,9 +5516,9 @@ static void dmi_table_string(const struct dmi_header *h, const u8 *data, u16 ver
 		}
 
 		if (offset)
-			printf("%s\n", dmi_string(h, offset));
+			pr_printf("%s\n", dmi_string(h, offset));
 		else
-			printf("%u\n", data[4]);	/* count */
+			pr_printf("%u\n", data[4]);	/* count */
 		return;
 	}
 
@@ -5530,26 +5530,26 @@ static void dmi_table_string(const struct dmi_header *h, const u8 *data, u16 ver
 	{
 		case 0x015: /* -s bios-revision */
 			if (data[offset - 1] != 0xFF && data[offset] != 0xFF)
-				printf("%u.%u\n", data[offset - 1], data[offset]);
+				pr_printf("%u.%u\n", data[offset - 1], data[offset]);
 			break;
 		case 0x017: /* -s firmware-revision */
 			if (data[offset - 1] != 0xFF && data[offset] != 0xFF)
-				printf("%u.%u\n", data[offset - 1], data[offset]);
+				pr_printf("%u.%u\n", data[offset - 1], data[offset]);
 			break;
 		case 0x108:
 			dmi_system_uuid(NULL, NULL, data + offset, ver);
 			break;
 		case 0x305:
-			printf("%s\n", dmi_chassis_type(data[offset]));
+			pr_printf("%s\n", dmi_chassis_type(data[offset]));
 			break;
 		case 0x406:
-			printf("%s\n", dmi_processor_family(h, ver));
+			pr_printf("%s\n", dmi_processor_family(h, ver));
 			break;
 		case 0x416:
 			dmi_processor_frequency(NULL, data + offset);
 			break;
 		default:
-			printf("%s\n", dmi_string(h, data[offset]));
+			pr_printf("%s\n", dmi_string(h, data[offset]));
 	}
 }
 

@@ -21,6 +21,7 @@
 
 #include "dmidecode.h"
 
+void pr_printf(const char *format, ...);
 void pr_comment(const char *format, ...);
 void pr_info(const char *format, ...);
 void pr_handle(const struct dmi_header *h);
