@@ -19,6 +19,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#include <json-c/json.h>
 #include "dmidecode.h"
 
 #define TEXT_FORMAT     1
@@ -28,7 +29,7 @@ void pr_set_json_format(void);
 void pr_printf(const char *format, ...);
 void pr_comment(const char *format, ...);
 void pr_info(const char *format, ...);
-void pr_handle(const struct dmi_header *h);
+json_object *pr_handle(const struct dmi_header *h);
 void pr_handle_name(const char *format, ...);
 void pr_attr(const char *name, const char *format, ...);
 void pr_subattr(const char *name, const char *format, ...);

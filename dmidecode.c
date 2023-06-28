@@ -5619,6 +5619,11 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 {
 	u8 *data;
 	int i = 0;
+    json_object *root = NULL;
+
+    if (opt.flags & FLAG_JSON) {
+        root = json_object_new_object();
+    }
 
 	/* First pass: Save specific values needed to decode OEM types */
 	data = buf;
@@ -5664,6 +5669,10 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 	}
 
 	/* Second pass: Actually decode the data */
+    json_object *array = NULL;
+    if (opt.flags & FLAG_JSON) {
+        array = json_object_new_array();
+    }
 	i = 0;
 	data = buf;
 	while ((i < num || !num)
@@ -5672,6 +5681,10 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		u8 *next;
 		struct dmi_header h;
 		int display;
+        json_object *entry = NULL;
+        if (opt.flags & FLAG_JSON) {
+            entry = json_object_new_object();
+        }
 
 		to_dmi_header(&h, data);
 		display = ((opt.type == NULL || opt.type[h.type])
@@ -5703,9 +5716,15 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		if ((opt.flags & FLAG_QUIET) && h.type == 127)
 			break;
 
+        json_object *header = NULL;
 		if (display
 		 && (!(opt.flags & FLAG_QUIET) || (opt.flags & FLAG_DUMP)))
-			pr_handle(&h);
+        {
+            header = pr_handle(&h);
+            if (header != NULL) {
+                json_object_object_add(entry, "header", header);
+            }
+        }
 
 		/* Look for the next handle */
 		next = data + h.length;
@@ -5742,12 +5761,26 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		      && opt.string->type == h.type)
 			dmi_table_string(&h, data, ver);
 
+        if (opt.flags & FLAG_JSON) {
+            json_object_array_add(array, entry);
+        }
+
 		data = next;
 
 		/* SMBIOS v3 requires stopping at this marker */
 		if (h.type == 127 && (flags & FLAG_STOP_AT_EOT))
 			break;
 	}
+
+    if (opt.flags & FLAG_JSON) {
+        /* Add array of decoded entries */
+        json_object_object_add(root, "data", array);
+
+        /* Print json object to stdout */
+        printf("%s\n", json_object_to_json_string_ext(root, JSON_C_TO_STRING_PRETTY));
+
+        json_object_put(root);
+    }
 
 	/*
 	 * SMBIOS v3 64-bit entry points do not announce a structures count,
@@ -6131,7 +6164,6 @@ int main(int argc, char * const argv[])
 	size_t size;
 	int efi;
 	u8 *buf = NULL;
-    json_object *root = NULL;
 
 	/*
 	 * We don't want stdout and stderr to be mixed up if both are
@@ -6171,7 +6203,6 @@ int main(int argc, char * const argv[])
 
     if (opt.flags & FLAG_JSON) {
         pr_set_json_format();
-        root = json_object_new_object();
     }
 
 	if (!(opt.flags & FLAG_QUIET))
@@ -6332,8 +6363,6 @@ done:
 	free(buf);
 exit_free:
 	free(opt.type);
-
-    json_object_put(root);
 
 	return ret;
 }
