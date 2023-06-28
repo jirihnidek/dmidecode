@@ -107,7 +107,7 @@ static int dmi_decode_acer(const struct dmi_header *h)
 			 * brands, including Fujitsu-Siemens, Medion, Lenovo,
 			 * and eMachines.
 			 */
-			pr_handle_name("Acer Hotkey Function");
+			pr_handle_name(NULL, "Acer Hotkey Function");
 			if (h->length < 0x0F) break;
 			cap = WORD(data + 0x04);
 			pr_attr("Function bitmap for Communication Button", "0x%04hx", cap);
@@ -832,7 +832,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x02  | Handle     | WORD  | Unique handle
 			 *  0x04  | Dev Status | BYTE  | Device Status
 			 */
-			pr_handle_name("%s ProLiant Super IO Enable/Disable Indicator", company);
+			pr_handle_name(NULL, "%s ProLiant Super IO Enable/Disable Indicator", company);
 			if (h->length < 0x05) break;
 			feat = data[0x04];
 			pr_attr("Serial Port A", "%s", feat & (1 << 0) ? "Enabled" : "Disabled");
@@ -876,7 +876,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x1A  | QDF/S-SPEC |6 BYTES| Processor QDF/S-SPEC Numbers (Intel only)
 			 *  0x20  | Reserved   | DWORD | Gen11 Reserved
 			 */
-			pr_handle_name("%s Processor Specific Information", company);
+			pr_handle_name(NULL, "%s Processor Specific Information", company);
 			if (h->length < 0x0A) break;
 			if (!(opt.flags & FLAG_QUIET))
 				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x04));
@@ -917,7 +917,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x04  | Patch Info | Varies| { <DWORD: ID, DWORD Date, DWORD CPUID> ...}
 			 */
 			if (gen < G9) return 0;
-			pr_handle_name("%s ProLiant CPU Microcode Patch Support Info", company);
+			pr_handle_name(NULL, "%s ProLiant CPU Microcode Patch Support Info", company);
 
 			for (ptr = 0x4; ptr + 12 <= h->length; ptr += 12) {
 				u32 cpuid = DWORD(data + ptr + 2 * 4);
@@ -973,7 +973,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x27  | Func Number  | BTYE  | PCI Device and Function Number
 			 */
 			if (gen < G9) return 0;
-			pr_handle_name("%s Device Correlation Record", company);
+			pr_handle_name(NULL, "%s Device Correlation Record", company);
 			if (h->length < 0x1F) break;
 			dmi_hp_203_assoc_hndl("Associated Device Record", WORD(data + 0x04));
 			dmi_hp_203_assoc_hndl("Associated SMBus Record",  WORD(data + 0x06));
@@ -1030,7 +1030,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			/*
 			 * Vendor Specific: HPE ProLiant System/Rack Locator
 			 */
-			pr_handle_name("%s ProLiant System/Rack Locator", company);
+			pr_handle_name(NULL, "%s ProLiant System/Rack Locator", company);
 			if (h->length < 0x0B) break;
 			pr_attr("Rack Name", "%s", dmi_string(h, data[0x04]));
 			pr_attr("Enclosure Name", "%s", dmi_string(h, data[0x05]));
@@ -1063,7 +1063,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 * Type 221: is deprecated in the latest docs
 			 */
 			if (gen >= G8 && h->type == 221) return 0;
-			pr_handle_name("%s %s", company, h->type == 221 ?
+			pr_handle_name(NULL, "%s %s", company, h->type == 221 ?
 				       "BIOS iSCSI NIC PCI and MAC Information" :
 				       "BIOS PXE NIC PCI and MAC Information");
 			nic = 1;
@@ -1086,7 +1086,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 * Source: hpwdt kernel driver
 			 */
 			if (gen >= G9) return 0;
-			pr_handle_name("%s 64-bit CRU Information", company);
+			pr_handle_name(NULL, "%s 64-bit CRU Information", company);
 			if (h->length < 0x18) break;
 			if (is_printable(data + 0x04, 4))
 				pr_attr("Signature", "0x%08x (%c%c%c%c)",
@@ -1142,7 +1142,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x15  | Unique ID  |  WORD  | Unique ID for Firmware flash
 			 */
 			if (gen < G8) return 0;
-			pr_handle_name("%s Version Indicator", company);
+			pr_handle_name(NULL, "%s Version Indicator", company);
 			if (h->length < 23) break;
 			dmi_hp_216_fw_type(WORD(data + 0x04));
 			pr_attr("Firmware Name String", "%s", dmi_string(h, data[0x06]));
@@ -1158,7 +1158,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *
 			 * Source: hpwdt kernel driver
 			 */
-			pr_handle_name("%s ProLiant Information", company);
+			pr_handle_name(NULL, "%s ProLiant Information", company);
 			if (h->length < 0x08) break;
 			pr_attr("Power Features", "0x%08x", DWORD(data + 0x04));
 			if (h->length < 0x0C) break;
@@ -1186,7 +1186,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x08  | Handle | WORD  | Handle to map to Type 216
 			 *  0x0A  | Chip ID| WORD  | Chip Identifier Values
 			 */
-			pr_handle_name("%s Trusted Module (TPM or TCM) Status", company);
+			pr_handle_name(NULL, "%s Trusted Module (TPM or TCM) Status", company);
 			if (h->length < 0x05) break;
 			if (!dmi_hp_224_status(data[0x04]))
 				break;
@@ -1219,7 +1219,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x09 | I2C Bus Num | BYTE  | I2C Bus #. Value based upon context
 			 *  0x0A | I2C Address | BYTE  | I2C Address
 			 */
-			pr_handle_name("%s Power Supply Information", company);
+			pr_handle_name(NULL, "%s Power Supply Information", company);
 			if (h->length < 0x0B) break;
 			if (!(opt.flags & FLAG_QUIET))
 				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
@@ -1246,7 +1246,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x08  |   MAC  | 32B   | MAC addr padded w/ 0s
 			 *  0x28  | Port No| BYTE  | Each NIC maps to a Port
 			 */
-			pr_handle_name("%s BIOS PXE NIC PCI and MAC Information",
+			pr_handle_name(NULL, "%s BIOS PXE NIC PCI and MAC Information",
 				       company);
 			if (h->length < 0x0E) break;
 			/* If the record isn't long enough, we don't have an ID
@@ -1276,7 +1276,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x14  | Name       | STRING| (deprecated) Backplane Name
 			 */
 			if (gen >= G11) return 0;
-			pr_handle_name("%s HDD Backplane FRU Information", company);
+			pr_handle_name(NULL, "%s HDD Backplane FRU Information", company);
 			if (h->length < 0x08) break;
 			pr_attr("FRU I2C Address", "0x%X raw(0x%X)", data[0x4] >> 1, data[0x4]);
 			pr_attr("Box Number", "%d", WORD(data + 0x5));
@@ -1310,7 +1310,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x0A  | Man Date   | BYTE  | DIMM Manufacture Date (WEEK) in BCD
 			 */
 			if (gen < G9) return 0;
-			pr_handle_name("%s DIMM Vendor Information", company);
+			pr_handle_name(NULL, "%s DIMM Vendor Information", company);
 			if (h->length < 0x08) break;
 			if (!(opt.flags & FLAG_QUIET))
 				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
@@ -1343,7 +1343,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x0E  | Device Path| STRING| UEFI Device Path of USB endpoint
 			 */
 			if (gen < G9) return 0;
-			pr_handle_name("%s Proliant USB Port Connector Correlation Record", company);
+			pr_handle_name(NULL, "%s Proliant USB Port Connector Correlation Record", company);
 			if (h->length < 0x0F) break;
 			if (!(opt.flags & FLAG_QUIET))
 				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
@@ -1392,7 +1392,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x16  | Location   | STRING| USB Device Location
 			 */
 			if (gen < G9) return 0;
-			pr_handle_name("%s USB Device Correlation Record", company);
+			pr_handle_name(NULL, "%s USB Device Correlation Record", company);
 			if (h->length < 0x17) break;
 			if (!(opt.flags & FLAG_QUIET))
 				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x04));
@@ -1430,7 +1430,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x1B  | Attr Set   | QWORD | BitField: If defined, is attribute set?
 			 *  0x23  | Version    | DWORD | Lowest supported version.
 			 */
-			pr_handle_name("%s Proliant Inventory Record", company);
+			pr_handle_name(NULL, "%s Proliant Inventory Record", company);
 			if (h->length < 0x27) break;
 			if (!(opt.flags & FLAG_QUIET))
 				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
@@ -1487,7 +1487,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x3C  | Cap Speed  | WORD  | Fastest Capable Bus Speed of drive
 			 */
 			if (gen < G10) return 0;
-			pr_handle_name("%s ProLiant Hard Drive Inventory Record", company);
+			pr_handle_name(NULL, "%s ProLiant Hard Drive Inventory Record", company);
 			if (h->length < 0x2C) break;
 			if (!(opt.flags & FLAG_QUIET))
 				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
@@ -1554,7 +1554,7 @@ static int dmi_decode_hp(const struct dmi_header *h)
 			 *  0x07  | CPLD Vers  | BTYE  | 0-> No CPLD. Bits [7][6:0] Release:Vers
 			 *  0x08  | Riser Name | STRING|
 			 */
-			pr_handle_name("%s ProLiant Extension Board Inventory Record", company);
+			pr_handle_name(NULL, "%s ProLiant Extension Board Inventory Record", company);
 			if (h->length < 0x05) break;
 			if (data[0x04] == 0)
 				dmi_hp_245_pcie_riser(h);
@@ -1601,7 +1601,7 @@ static int dmi_decode_ibm_lenovo(const struct dmi_header *h)
 			 || strcmp(dmi_string(h, 1), "TVT-Enablement") != 0)
 				return 0;
 
-			pr_handle_name("ThinkVantage Technologies");
+			pr_handle_name(NULL, "ThinkVantage Technologies");
 			pr_attr("Version", "%u", data[0x04]);
 			pr_attr("Diagnostics", "%s",
 				data[0x14] & 0x80 ? "Available" : "No");
@@ -1640,7 +1640,7 @@ static int dmi_decode_ibm_lenovo(const struct dmi_header *h)
 			if (data[0x06] != 0x07 || data[0x07] != 0x03 || data[0x08] != 0x01)
 				return 0;
 
-			pr_handle_name("ThinkPad Device Presence Detection");
+			pr_handle_name(NULL, "ThinkPad Device Presence Detection");
 			pr_attr("Fingerprint Reader", "%s",
 				data[0x09] & 0x01 ? "Present" : "No");
 			break;
@@ -1673,7 +1673,7 @@ static int dmi_decode_ibm_lenovo(const struct dmi_header *h)
 			if (data[0x0A] != 0x0B || data[0x0B] != 0x07 || data[0x0C] != 0x01)
 				return 0;
 
-			pr_handle_name("ThinkPad Embedded Controller Program");
+			pr_handle_name(NULL, "ThinkPad Embedded Controller Program");
 			pr_attr("Version ID", "%s", dmi_string(h, 1));
 			pr_attr("Release Date", "%s", dmi_string(h, 2));
 			break;
