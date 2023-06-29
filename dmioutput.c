@@ -103,7 +103,7 @@ void pr_handle_name(json_object *entry, const char *format, ...)
     }
 }
 
-void pr_attr(const char *name, const char *format, ...)
+void pr_attr(json_object *entry, const char *name, const char *format, ...)
 {
 	va_list args;
 	if (output_format == TEXT_FORMAT) {
@@ -113,9 +113,20 @@ void pr_attr(const char *name, const char *format, ...)
 		va_end(args);
 		printf("\n");
 	}
+	if (output_format == JSON_FORMAT && entry != NULL) {
+		char *str;
+		int ret;
+		va_start(args, format);
+		ret = vasprintf(&str, format, args);
+		va_end(args);
+		if (ret != -1) {
+			json_object_object_add(entry, name, json_object_new_string(str));
+			free(str);
+		}
+	}
 }
 
-void pr_subattr(const char *name, const char *format, ...)
+void pr_subattr(json_object *entry, const char *name, const char *format, ...)
 {
 	va_list args;
 	if (output_format == TEXT_FORMAT) {
@@ -124,6 +135,17 @@ void pr_subattr(const char *name, const char *format, ...)
 		vprintf(format, args);
 		va_end(args);
 		printf("\n");
+	}
+	if (output_format == JSON_FORMAT && entry != NULL) {
+		char *str;
+		int ret;
+		va_start(args, format);
+		ret = vasprintf(&str, format, args);
+		va_end(args);
+		if (ret != -1) {
+			json_object_object_add(entry, name, json_object_new_string(str));
+			free(str);
+		}
 	}
 }
 

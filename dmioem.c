@@ -110,16 +110,16 @@ static int dmi_decode_acer(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "Acer Hotkey Function");
 			if (h->length < 0x0F) break;
 			cap = WORD(data + 0x04);
-			pr_attr("Function bitmap for Communication Button", "0x%04hx", cap);
-			pr_subattr("WiFi", "%s", cap & 0x0001 ? "Yes" : "No");
-			pr_subattr("3G", "%s", cap & 0x0040 ? "Yes" : "No");
-			pr_subattr("WiMAX", "%s", cap & 0x0080 ? "Yes" : "No");
-			pr_subattr("Bluetooth", "%s", cap & 0x0800 ? "Yes" : "No");
-			pr_attr("Function bitmap for Application Button", "0x%04hx", WORD(data + 0x06));
-			pr_attr("Function bitmap for Media Button", "0x%04hx", WORD(data + 0x08));
-			pr_attr("Function bitmap for Display Button", "0x%04hx", WORD(data + 0x0A));
-			pr_attr("Function bitmap for Others Button", "0x%04hx", WORD(data + 0x0C));
-			pr_attr("Communication Function Key Number", "%d", data[0x0E]);
+			pr_attr(entry, "Function bitmap for Communication Button", "0x%04hx", cap);
+			pr_subattr(entry, "WiFi", "%s", cap & 0x0001 ? "Yes" : "No");
+			pr_subattr(entry, "3G", "%s", cap & 0x0040 ? "Yes" : "No");
+			pr_subattr(entry, "WiMAX", "%s", cap & 0x0080 ? "Yes" : "No");
+			pr_subattr(entry, "Bluetooth", "%s", cap & 0x0800 ? "Yes" : "No");
+			pr_attr(entry, "Function bitmap for Application Button", "0x%04hx", WORD(data + 0x06));
+			pr_attr(entry, "Function bitmap for Media Button", "0x%04hx", WORD(data + 0x08));
+			pr_attr(entry, "Function bitmap for Display Button", "0x%04hx", WORD(data + 0x0A));
+			pr_attr(entry, "Function bitmap for Others Button", "0x%04hx", WORD(data + 0x0C));
+			pr_attr(entry, "Communication Function Key Number", "%d", data[0x0E]);
 			break;
 
 		default:
@@ -134,7 +134,7 @@ static int dmi_decode_acer(json_object *entry, const struct dmi_header *h)
  * Code contributed by John Cagle and Tyler Bell.
  */
 
-static void dmi_print_hp_net_iface_rec(u8 id, u8 bus, u8 dev, const u8 *mac)
+static void dmi_print_hp_net_iface_rec(json_object *entry, u8 id, u8 bus, u8 dev, const u8 *mac)
 {
 	/* Some systems do not provide an id. nic_ctr provides an artificial
 	 * id, and assumes the records will be provided "in order".  Also,
@@ -149,12 +149,12 @@ static void dmi_print_hp_net_iface_rec(u8 id, u8 bus, u8 dev, const u8 *mac)
 
 	sprintf(attr, "NIC %hhu", id);
 	if (dev == 0x00 && bus == 0x00)
-		pr_attr(attr, "Disabled");
+		pr_attr(entry, attr, "Disabled");
 	else if (dev == 0xFF && bus == 0xFF)
-		pr_attr(attr, "Not Installed");
+		pr_attr(entry, attr, "Not Installed");
 	else
 	{
-		pr_attr(attr, "PCI device %02x:%02x.%x, "
+		pr_attr(entry, attr, "PCI device %02x:%02x.%x, "
 			"MAC address %02X:%02X:%02X:%02X:%02X:%02X",
 			bus, dev >> 3, dev & 7,
 			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -188,7 +188,7 @@ static int dmi_hpegen(const char *s)
 	return (dmi_vendor == VENDOR_HPE) ? G10P : G6;
 }
 
-static void dmi_hp_197_qdf(const u8 *qdf)
+static void dmi_hp_197_qdf(json_object *entry, const u8 *qdf)
 {
 	char str[7];
 	int i, j, len = 6;
@@ -202,44 +202,44 @@ static void dmi_hp_197_qdf(const u8 *qdf)
 			str[j++] = qdf[i];
 	}
 	str[j] = '\0';
-	pr_attr("QDF/S-SPEC", "%s", str);
+	pr_attr(entry, "QDF/S-SPEC", "%s", str);
 }
 
-static void dmi_hp_203_assoc_hndl(const char *fname, u16 num)
+static void dmi_hp_203_assoc_hndl(json_object *entry, const char *fname, u16 num)
 {
 	if (opt.flags & FLAG_QUIET)
 		return;
 
 	if (num == 0xFFFE)
-		pr_attr(fname, "N/A");
+		pr_attr(entry, fname, "N/A");
 	else
-		pr_attr(fname, "0x%04X", num);
+		pr_attr(entry, fname, "0x%04X", num);
 }
 
-static void dmi_hp_203_pciinfo(const char *fname, u16 num)
+static void dmi_hp_203_pciinfo(json_object *entry, const char *fname, u16 num)
 {
 	if (num == 0xFFFF)
-		pr_attr(fname, "Device Not Present");
+		pr_attr(entry, fname, "Device Not Present");
 	else
-		pr_attr(fname, "0x%04x", num);
+		pr_attr(entry, fname, "0x%04x", num);
 }
 
-static void dmi_hp_203_bayenc(const char *fname, u8 num)
+static void dmi_hp_203_bayenc(json_object *entry, const char *fname, u8 num)
 {
 	switch (num)
 	{
 		case 0x00:
-			pr_attr(fname, "Unknown");
+			pr_attr(entry, fname, "Unknown");
 			break;
 		case 0xff:
-			pr_attr(fname, "Do Not Display");
+			pr_attr(entry, fname, "Do Not Display");
 			break;
 		default:
-			pr_attr(fname, "%d", num);
+			pr_attr(entry, fname, "%d", num);
 	}
 }
 
-static void dmi_hp_203_devtyp(const char *fname, unsigned int code)
+static void dmi_hp_203_devtyp(json_object *entry, const char *fname, unsigned int code)
 {
 	const char *str = "Reserved";
 	static const char *type[] = {
@@ -266,10 +266,10 @@ static void dmi_hp_203_devtyp(const char *fname, unsigned int code)
 	if (code < ARRAY_SIZE(type))
 		str = type[code];
 
-	pr_attr(fname, "%s", str);
+	pr_attr(entry, fname, "%s", str);
 }
 
-static void dmi_hp_203_devloc(const char *fname, unsigned int code)
+static void dmi_hp_203_devloc(json_object *entry, const char *fname, unsigned int code)
 {
 	const char *str = "Reserved";
 	static const char *location[] = {
@@ -300,10 +300,10 @@ static void dmi_hp_203_devloc(const char *fname, unsigned int code)
 	if (code < ARRAY_SIZE(location))
 		str = location[code];
 
-	pr_attr(fname, "%s", str);
+	pr_attr(entry, fname, "%s", str);
 }
 
-static void dmi_hp_216_fw_type(u16 code)
+static void dmi_hp_216_fw_type(json_object *entry, u16 code)
 {
 	const char *str = "Reserved";
 	static const char * const type[] = {
@@ -372,10 +372,10 @@ static void dmi_hp_216_fw_type(u16 code)
 	if (code < ARRAY_SIZE(type))
 		str = type[code];
 
-	pr_attr("Firmware Type", "%s", str);
+	pr_attr(entry, "Firmware Type", "%s", str);
 }
 
-static void dmi_hp_216_version(u8 format, u8 *data)
+static void dmi_hp_216_version(json_object *entry, u8 format, u8 *data)
 {
 	const char * const name = "Version Data";
 	const char * const reserved = "Reserved";
@@ -385,81 +385,81 @@ static void dmi_hp_216_version(u8 format, u8 *data)
 
 	switch (format) {
 	case 0:
-		pr_attr(name, "No Version Data");
+		pr_attr(entry, name, "No Version Data");
 		break;
 	case 1:
 		if (data[0] >> 7)
-			pr_attr(name, "0x%02X B.0x%02X", data[1] & 0x7F, data[0] & 0x7F);
+			pr_attr(entry, name, "0x%02X B.0x%02X", data[1] & 0x7F, data[0] & 0x7F);
 		else
-			pr_attr(name, "0x%02X", data[1] & 0x7F);
+			pr_attr(entry, name, "0x%02X", data[1] & 0x7F);
 		break;
 	case 2:
-		pr_attr(name, "%d.%d", data[0] >> 4, data[0] & 0x0f);
+		pr_attr(entry, name, "%d.%d", data[0] >> 4, data[0] & 0x0f);
 		break;
 	case 4:
-		pr_attr(name, "%d.%d.%d", data[0] >> 4, data[0] & 0x0f, data[1] & 0x7f);
+		pr_attr(entry, name, "%d.%d.%d", data[0] >> 4, data[0] & 0x0f, data[1] & 0x7f);
 		break;
 	case 5:
 		if (gen == G9) {
-			pr_attr(name, "%d.%d.%d", data[0] >> 4, data[0] & 0x0f, data[1] & 0x7f);
+			pr_attr(entry, name, "%d.%d.%d", data[0] >> 4, data[0] & 0x0f, data[1] & 0x7f);
 		} else if (gen == G10 || gen == G10P) {
-			pr_attr(name, "%d.%d.%d.%d", data[1] & 0x0f, data[3] & 0x0f,
+			pr_attr(entry, name, "%d.%d.%d.%d", data[1] & 0x0f, data[3] & 0x0f,
 						     data[5] & 0x0f, data[6] & 0x0f);
 		} else {
-			pr_attr(name, "%s", reserved);
+			pr_attr(entry, name, "%s", reserved);
 		}
 		break;
 	case 6:
-		pr_attr(name, "%d.%d", data[1], data[0]);
+		pr_attr(entry, name, "%d.%d", data[1], data[0]);
 		break;
 	case 7:
-		pr_attr(name, "v%d.%.2d (%.2d/%.2d/%d)", data[0], data[1],
+		pr_attr(entry, name, "v%d.%.2d (%.2d/%.2d/%d)", data[0], data[1],
 							 data[2], data[3], WORD(data + 4));
 		break;
 	case 8:
-		pr_attr(name, "%d.%d", WORD(data + 4), WORD(data));
+		pr_attr(entry, name, "%d.%d", WORD(data + 4), WORD(data));
 		break;
 	case 9:
-		pr_attr(name, "%d.%d.%d", data[0], data[1], WORD(data + 2));
+		pr_attr(entry, name, "%d.%d.%d", data[0], data[1], WORD(data + 2));
 		break;
 	case 10:
-		pr_attr(name, "%d.%d.%d Build %d", data[0], data[1], data[2], data[3]);
+		pr_attr(entry, name, "%d.%d.%d Build %d", data[0], data[1], data[2], data[3]);
 		break;
 	case 11:
-		pr_attr(name, "%d.%d %d", WORD(data + 2), WORD(data), DWORD(data + 4));
+		pr_attr(entry, name, "%d.%d %d", WORD(data + 2), WORD(data), DWORD(data + 4));
 		break;
 	case 12:
-		pr_attr(name, "%d.%d.%d.%d", WORD(data), WORD(data + 2),
+		pr_attr(entry, name, "%d.%d.%d.%d", WORD(data), WORD(data + 2),
 					     WORD(data + 4), WORD(data + 6));
 		break;
 	case 13:
-		pr_attr(name, "%d", data[0]);
+		pr_attr(entry, name, "%d", data[0]);
 		break;
 	case 14:
-		pr_attr(name, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
+		pr_attr(entry, name, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
 		break;
 	case 15:
-		pr_attr(name, "%d.%d.%d.%d (%.2d/%.2d/%d)",
+		pr_attr(entry, name, "%d.%d.%d.%d (%.2d/%.2d/%d)",
 				WORD(data), WORD(data + 2), WORD(data + 4), WORD(data + 6),
 				data[8], data[9], WORD(data + 10));
 		break;
 	case 16:
-		pr_attr(name, "%c%c%c%c.%d%d",
+		pr_attr(entry, name, "%c%c%c%c.%d%d",
 				data[0], data[1], data[2], data[3], data[4], data[5]);
 		break;
 	case 17:
-		pr_attr(name, "%08X", DWORD(data));
+		pr_attr(entry, name, "%08X", DWORD(data));
 		break;
 	case 18:
-		pr_attr(name, "%d.%2d", data[0], data[1]);
+		pr_attr(entry, name, "%d.%2d", data[0], data[1]);
 		break;
 	case 3: /* fall through */
 	default:
-		pr_attr(name, "%s", reserved);
+		pr_attr(entry, name, "%s", reserved);
 	}
 }
 
-static int dmi_hp_224_status(u8 code)
+static int dmi_hp_224_status(json_object *entry, u8 code)
 {
 	static const char * const present[] = {
 		"Not Present", /* 0x00 */
@@ -468,15 +468,15 @@ static int dmi_hp_224_status(u8 code)
 		"Reserved" /* 0x03 */
 	};
 
-	pr_attr("Status", "%s", present[code & 0x03]);
+	pr_attr(entry, "Status", "%s", present[code & 0x03]);
 	if ((code & 0x03) == 0x00)
 		return 0;
-	pr_attr("Option ROM Measuring", "%s", (code & (1 << 2)) ? "Yes" : "No");
-	pr_attr("Hidden", "%s", (code & (1 << 3)) ? "Yes" : "No");
+	pr_attr(entry, "Option ROM Measuring", "%s", (code & (1 << 2)) ? "Yes" : "No");
+	pr_attr(entry, "Hidden", "%s", (code & (1 << 3)) ? "Yes" : "No");
 	return 1;
 }
 
-static void dmi_hp_224_ex_status(u8 status, u8 code)
+static void dmi_hp_224_ex_status(json_object *entry, u8 status, u8 code)
 {
 	const char *str = "Reserved";
 	static const char * const disable_reason[] = {
@@ -490,16 +490,16 @@ static void dmi_hp_224_ex_status(u8 status, u8 code)
 		"Self-Test",     /* 0x01 */
 	};
 	if ((status & 0x03) == 0x02)
-		pr_attr("Disable Reason", "%s", disable_reason[code & 0x03]);
+		pr_attr(entry, "Disable Reason", "%s", disable_reason[code & 0x03]);
 	if ((code & 0x03) == 0x02) {
 		u8 error = (code >> 2) & 0x0f;
 		if (error < ARRAY_SIZE(error_condition))
 			str = error_condition[error];
-		pr_attr("Error Condition", "%s", str);
+		pr_attr(entry, "Error Condition", "%s", str);
 	}
 }
 
-static void dmi_hp_224_module_type(u8 code)
+static void dmi_hp_224_module_type(json_object *entry, u8 code)
 {
 	const char *str = "Reserved";
 	static const char * const type[] = {
@@ -510,12 +510,12 @@ static void dmi_hp_224_module_type(u8 code)
 	};
 	if ((code & 0x0f) < ARRAY_SIZE(type))
 		str = type[code & 0x0f];
-	pr_attr("Type", "%s", str);
-	pr_attr("Standard Algorithm Supported", "%s", (code & (1 << 4)) ? "Yes" : "No");
-	pr_attr("Chinese Algorithm Supported", "%s", (code & (1 << 5)) ? "Yes" : "No");
+	pr_attr(entry, "Type", "%s", str);
+	pr_attr(entry, "Standard Algorithm Supported", "%s", (code & (1 << 4)) ? "Yes" : "No");
+	pr_attr(entry, "Chinese Algorithm Supported", "%s", (code & (1 << 5)) ? "Yes" : "No");
 }
 
-static void dmi_hp_224_module_attr(u8 code)
+static void dmi_hp_224_module_attr(json_object *entry, u8 code)
 {
 	static const char * const phys_attr[] = {
 		"Not Specified", /* 0x00 */
@@ -529,11 +529,11 @@ static void dmi_hp_224_module_attr(u8 code)
 		"FIPS Certified",
 		"Reserved"  /* 0x03 */
 	};
-	pr_attr("Trusted Module Attributes", "%s", phys_attr[code & 0x3]);
-	pr_attr("FIPS Certification", "%s", fips_attr[((code >> 2) & 0x03)]);
+	pr_attr(entry, "Trusted Module Attributes", "%s", phys_attr[code & 0x3]);
+	pr_attr(entry, "FIPS Certification", "%s", fips_attr[((code >> 2) & 0x03)]);
 }
 
-static void dmi_hp_224_chipid(u16 code)
+static void dmi_hp_224_chipid(json_object *entry, u16 code)
 {
 	const char *str = "Reserved";
 	static const char * const chipid[] = {
@@ -546,10 +546,10 @@ static void dmi_hp_224_chipid(u16 code)
 	};
 	if ((code & 0xff) < ARRAY_SIZE(chipid))
 		str = chipid[code & 0xff];
-	pr_attr("Chip Identifier", "%s", str);
+	pr_attr(entry, "Chip Identifier", "%s", str);
 }
 
-static void dmi_hp_230_method_bus_seg_addr(u8 code, u8 bus_seg, u8 addr)
+static void dmi_hp_230_method_bus_seg_addr(json_object *entry, u8 code, u8 bus_seg, u8 addr)
 {
 	const char *str = "Reserved";
 	static const char * const method[] = {
@@ -560,21 +560,21 @@ static void dmi_hp_230_method_bus_seg_addr(u8 code, u8 bus_seg, u8 addr)
 	};
 	if (code < ARRAY_SIZE(method))
 		str = method[code];
-	pr_attr("Access Method", "%s", str);
+	pr_attr(entry, "Access Method", "%s", str);
 	if (code == 0 || code >= ARRAY_SIZE(method))
 		return;
 	if (bus_seg != 0xFF)
 	{
 		if (code == 2)
-			pr_attr("I2C Segment Number", "%d", bus_seg);
+			pr_attr(entry, "I2C Segment Number", "%d", bus_seg);
 		else
-			pr_attr("I2C Bus Number", "%d", bus_seg);
+			pr_attr(entry, "I2C Bus Number", "%d", bus_seg);
 	}
 	if (addr != 0xFF)
-		pr_attr("I2C Address", "0x%02x", addr >> 1);
+		pr_attr(entry, "I2C Address", "0x%02x", addr >> 1);
 }
 
-static void dmi_hp_238_loc(const char *fname, unsigned int code)
+static void dmi_hp_238_loc(json_object *entry, const char *fname, unsigned int code)
 {
 	const char *str = "Reserved";
 	static const char *location[] = {
@@ -593,10 +593,10 @@ static void dmi_hp_238_loc(const char *fname, unsigned int code)
 	if (code < ARRAY_SIZE(location))
 		str = location[code];
 
-	pr_attr(fname, "%s", str);
+	pr_attr(entry, fname, "%s", str);
 }
 
-static void dmi_hp_238_flags(const char *fname, unsigned int code)
+static void dmi_hp_238_flags(json_object *entry, const char *fname, unsigned int code)
 {
 	const char *str = "Reserved";
 	static const char *flags[] = {
@@ -608,10 +608,10 @@ static void dmi_hp_238_flags(const char *fname, unsigned int code)
 	if (code < ARRAY_SIZE(flags))
 		str = flags[code];
 
-	pr_attr(fname, "%s", str);
+	pr_attr(entry, fname, "%s", str);
 }
 
-static void dmi_hp_238_speed(const char *fname, unsigned int code)
+static void dmi_hp_238_speed(json_object *entry, const char *fname, unsigned int code)
 {
 	const char *str = "Reserved";
 	static const char *speed[] = {
@@ -624,10 +624,10 @@ static void dmi_hp_238_speed(const char *fname, unsigned int code)
 	if (code < ARRAY_SIZE(speed))
 		str = speed[code];
 
-	pr_attr(fname, "%s", str);
+	pr_attr(entry, fname, "%s", str);
 }
 
-static void dmi_hp_239_usb_device(u8 class, u8 subclass, u8 protocol)
+static void dmi_hp_239_usb_device(json_object *entry, u8 class, u8 subclass, u8 protocol)
 {
 	/* https://www.usb.org/defined-class-codes */
 	/* https://www.usb.org/sites/default/files/Mass_Storage_Specification_Overview_v1.4_2-19-2010.pdf */
@@ -645,7 +645,7 @@ static void dmi_hp_239_usb_device(u8 class, u8 subclass, u8 protocol)
 			"LSD FS",
 			"IEEE 1667" /* 0x08 */
 		};
-		pr_attr("USB Class", "%s", "Mass Storage");
+		pr_attr(entry, "USB Class", "%s", "Mass Storage");
 		if (subclass == 0xFF)
 		{
 			str = "Vendor Specific";
@@ -654,7 +654,7 @@ static void dmi_hp_239_usb_device(u8 class, u8 subclass, u8 protocol)
 		{
 			str = sub_class_name[subclass];
 		}
-		pr_attr("USB SubClass", "%s", str);
+		pr_attr(entry, "USB SubClass", "%s", str);
 
 		switch (protocol) {
 		case 0x00:
@@ -678,11 +678,11 @@ static void dmi_hp_239_usb_device(u8 class, u8 subclass, u8 protocol)
 		default:
 			str = "Reserved";
 		}
-		pr_attr("USB Protocol", "%s", str);
+		pr_attr(entry, "USB Protocol", "%s", str);
 	}
 	else if (class == 0x09 && subclass == 0)
 	{
-		pr_attr("USB Class", "%s", "HUB");
+		pr_attr(entry, "USB Class", "%s", "HUB");
 		switch (protocol) {
 		case 0:
 			str = "Full Speed";
@@ -696,13 +696,13 @@ static void dmi_hp_239_usb_device(u8 class, u8 subclass, u8 protocol)
 		default:
 			str = "Reserved";
 		}
-		pr_attr("USB Protocol", str);
+		pr_attr(entry, "USB Protocol", str);
 	}
 	else
 	{
-		pr_attr("USB Class", "0x%02x", class);
-		pr_attr("USB SubClass", "0x%02x", subclass);
-		pr_attr("USB Protocol", "0x%02x", protocol);
+		pr_attr(entry, "USB Class", "0x%02x", class);
+		pr_attr(entry, "USB SubClass", "0x%02x", subclass);
+		pr_attr(entry, "USB Protocol", "0x%02x", protocol);
 	}
 }
 
@@ -727,7 +727,7 @@ static void dmi_hp_240_attr(u64 defined, u64 set)
 	pr_list_end();
 }
 
-static void dmi_hp_242_hdd_type(u8 code)
+static void dmi_hp_242_hdd_type(json_object *entry, u8 code)
 {
 	const char *str = "Reserved";
 	static const char * const type[] = {
@@ -741,10 +741,10 @@ static void dmi_hp_242_hdd_type(u8 code)
 	if (code < ARRAY_SIZE(type))
 		str = type[code];
 
-	pr_attr("Hard Drive Type", "%s", str);
+	pr_attr(entry, "Hard Drive Type", "%s", str);
 }
 
-static void dmi_hp_242_form_factor(u8 code)
+static void dmi_hp_242_form_factor(json_object *entry, u8 code)
 {
 	const char *str = "Reserved";
 	static const char * const form[] = {
@@ -771,23 +771,23 @@ static void dmi_hp_242_form_factor(u8 code)
 	else if (code >= 0x20 && code < 0x20 + ARRAY_SIZE(form2))
 		str = form2[code - 0x20];
 
-	pr_attr("Form Factor", "%s", str);
+	pr_attr(entry, "Form Factor", "%s", str);
 }
 
-static void dmi_hp_242_speed(const char *attr, u16 speed)
+static void dmi_hp_242_speed(json_object *entry, const char *attr, u16 speed)
 {
 	if (speed)
-		pr_attr(attr, "%hu Gbit/s", speed);
+		pr_attr(entry, attr, "%hu Gbit/s", speed);
 	else
-		pr_attr(attr, "%s", "Unknown");
+		pr_attr(entry, attr, "%s", "Unknown");
 }
 
-static void dmi_hp_245_pcie_riser(const struct dmi_header *h)
+static void dmi_hp_245_pcie_riser(json_object *entry, const struct dmi_header *h)
 {
 	const char *str = "Reserved";
 	u8 *data = h->data;
 
-	pr_attr("Board Type", "PCIe Riser");
+	pr_attr(entry, "Board Type", "PCIe Riser");
 	if (h->length < 0x09) return;
 	switch (data[0x05])
 	{
@@ -797,14 +797,14 @@ static void dmi_hp_245_pcie_riser(const struct dmi_header *h)
 		case 4: str = "Quaternary"; break;
 		case 10: str = "Front"; break;
 	}
-	pr_attr("Riser Position", "%s", str);
-	pr_attr("Riser ID", "%d", data[0x06]);
+	pr_attr(entry, "Riser Position", "%s", str);
+	pr_attr(entry, "Riser ID", "%d", data[0x06]);
 	if (data[0x07])
 	{
 		str = (data[0x07] >> 7) ? "B." : "";
-		pr_attr("CPLD Version", "%s0x%02X", str, (data[0x07] & 0x7F));
+		pr_attr(entry, "CPLD Version", "%s0x%02X", str, (data[0x07] & 0x7F));
 	}
-	pr_attr("Riser Name", dmi_string(h, data[0x08]));
+	pr_attr(entry, "Riser Name", dmi_string(h, data[0x08]));
 }
 
 static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
@@ -835,11 +835,11 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s ProLiant Super IO Enable/Disable Indicator", company);
 			if (h->length < 0x05) break;
 			feat = data[0x04];
-			pr_attr("Serial Port A", "%s", feat & (1 << 0) ? "Enabled" : "Disabled");
-			pr_attr("Serial Port B", "%s", feat & (1 << 1) ? "Enabled" : "Disabled");
-			pr_attr("Parallel Port", "%s", feat & (1 << 2) ? "Enabled" : "Disabled");
-			pr_attr("Floppy Disk Port", "%s", feat & (1 << 3) ? "Enabled" : "Disabled");
-			pr_attr("Virtual Serial Port", "%s", feat & (1 << 4) ? "Enabled" : "Disabled");
+			pr_attr(entry, "Serial Port A", "%s", feat & (1 << 0) ? "Enabled" : "Disabled");
+			pr_attr(entry, "Serial Port B", "%s", feat & (1 << 1) ? "Enabled" : "Disabled");
+			pr_attr(entry, "Parallel Port", "%s", feat & (1 << 2) ? "Enabled" : "Disabled");
+			pr_attr(entry, "Floppy Disk Port", "%s", feat & (1 << 3) ? "Enabled" : "Disabled");
+			pr_attr(entry, "Virtual Serial Port", "%s", feat & (1 << 4) ? "Enabled" : "Disabled");
 			break;
 
 		case 197:
@@ -879,30 +879,30 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s Processor Specific Information", company);
 			if (h->length < 0x0A) break;
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x04));
-			pr_attr("APIC ID", "%u", data[0x06]);
+				pr_attr(entry, "Associated Handle", "0x%04X", WORD(data + 0x04));
+			pr_attr(entry, "APIC ID", "%u", data[0x06]);
 			feat = data[0x07];
-			pr_attr("BSP", "%s", feat & 0x01 ? "Yes" : "No");
-			pr_attr("x2APIC", "%s", feat & 0x02 ? "Yes" : "No");
-			pr_attr("Advanced Thermal Margining", "%s", feat & 0x04 ? "Yes" : "No");
+			pr_attr(entry, "BSP", "%s", feat & 0x01 ? "Yes" : "No");
+			pr_attr(entry, "x2APIC", "%s", feat & 0x02 ? "Yes" : "No");
+			pr_attr(entry, "Advanced Thermal Margining", "%s", feat & 0x04 ? "Yes" : "No");
 			if (data[0x08] != 0xFF)
-				pr_attr("Physical Slot", "%d", data[0x08]);
+				pr_attr(entry, "Physical Slot", "%d", data[0x08]);
 			if (data[0x09] != 0xFF)
-				pr_attr("Physical Socket", "%d", data[0x09]);
+				pr_attr(entry, "Physical Socket", "%d", data[0x09]);
 			if (h->length < 0x0C) break;
 			if (WORD(data + 0x0A))
-				pr_attr("Maximum Power", "%d W", WORD(data + 0x0A));
+				pr_attr(entry, "Maximum Power", "%d W", WORD(data + 0x0A));
 			if (h->length < 0x10) break;
 			if (feat & 0x02)
-				pr_attr("x2APIC ID", "0x%08x", DWORD(data + 0x0C));
+				pr_attr(entry, "x2APIC ID", "0x%08x", DWORD(data + 0x0C));
 			if (h->length < 0x18) break;
 			if (DWORD(data + 0x10) || DWORD(data + 0x14))
-				pr_attr("UUID", "0x%08x%08x", DWORD(data + 0x14), DWORD(data + 0x10));
+				pr_attr(entry, "UUID", "0x%08x%08x", DWORD(data + 0x14), DWORD(data + 0x10));
 			if (h->length < 0x1A) break;
 			if (WORD(data + 0x18))
-				pr_attr("Interconnect Speed", "%d MT/s", WORD(data + 0x18));
+				pr_attr(entry, "Interconnect Speed", "%d MT/s", WORD(data + 0x18));
 			if (h->length < 0x20) break;
-			dmi_hp_197_qdf(data + 0x1A);
+			dmi_hp_197_qdf(entry, data + 0x1A);
 			break;
 
 		case 199:
@@ -927,12 +927,12 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 				if (cpuid_type == cpuid_x86_amd)
 					cpuid = ((cpuid & 0xfff00) << 8) | 0x0f00 | (cpuid & 0xff);
 
-				dmi_print_cpuid(pr_attr, "CPU ID", cpuid_type, (u8 *) &cpuid);
+				dmi_print_cpuid(pr_attr, entry, "CPU ID", cpuid_type, (u8 *) &cpuid);
 
 				date = DWORD(data + ptr + 4);
-				pr_subattr("Date", "%04x-%02x-%02x",
+				pr_subattr(entry, "Date", "%04x-%02x-%02x",
 					date & 0xffff, (date >> 24) & 0xff, (date >> 16) & 0xff);
-				pr_subattr("Patch", "0x%X", DWORD(data + ptr));
+				pr_subattr(entry, "Patch", "0x%X", DWORD(data + ptr));
 			}
 			break;
 
@@ -975,54 +975,54 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			if (gen < G9) return 0;
 			pr_handle_name(entry, "%s Device Correlation Record", company);
 			if (h->length < 0x1F) break;
-			dmi_hp_203_assoc_hndl("Associated Device Record", WORD(data + 0x04));
-			dmi_hp_203_assoc_hndl("Associated SMBus Record",  WORD(data + 0x06));
+			dmi_hp_203_assoc_hndl(entry, "Associated Device Record", WORD(data + 0x04));
+			dmi_hp_203_assoc_hndl(entry, "Associated SMBus Record",  WORD(data + 0x06));
 			if (WORD(data + 0x08) == 0xffff && WORD(data + 0x0A) == 0xffff &&
 			    WORD(data + 0x0C) == 0xffff && WORD(data + 0x0E) == 0xffff &&
 			    data[0x10] == 0xFF && data[0x11] == 0xFF)
 			{
-				pr_attr("PCI Device Info", "Device Not Present");
+				pr_attr(entry, "PCI Device Info", "Device Not Present");
 			}
 			else
 			{
-				dmi_hp_203_pciinfo("PCI Vendor ID", WORD(data + 0x08));
-				dmi_hp_203_pciinfo("PCI Device ID", WORD(data + 0x0A));
-				dmi_hp_203_pciinfo("PCI Sub Vendor ID", WORD(data + 0x0C));
-				dmi_hp_203_pciinfo("PCI Sub Device ID", WORD(data + 0x0E));
-				dmi_hp_203_pciinfo("PCI Class Code", (char)data[0x10]);
-				dmi_hp_203_pciinfo("PCI Sub Class Code", (char)data[0x11]);
+				dmi_hp_203_pciinfo(entry, "PCI Vendor ID", WORD(data + 0x08));
+				dmi_hp_203_pciinfo(entry, "PCI Device ID", WORD(data + 0x0A));
+				dmi_hp_203_pciinfo(entry, "PCI Sub Vendor ID", WORD(data + 0x0C));
+				dmi_hp_203_pciinfo(entry, "PCI Sub Device ID", WORD(data + 0x0E));
+				dmi_hp_203_pciinfo(entry, "PCI Class Code", (char)data[0x10]);
+				dmi_hp_203_pciinfo(entry, "PCI Sub Class Code", (char)data[0x11]);
 			}
-			dmi_hp_203_assoc_hndl("Parent Handle", WORD(data + 0x12));
-			pr_attr("Flags", "0x%04X", WORD(data + 0x14));
+			dmi_hp_203_assoc_hndl(entry, "Parent Handle", WORD(data + 0x12));
+			pr_attr(entry, "Flags", "0x%04X", WORD(data + 0x14));
 			if (WORD(data + 0x14) & 0x01)
-				pr_subattr("Peer Bifurcated Device", "Yes");
+				pr_subattr(entry, "Peer Bifurcated Device", "Yes");
 			if (WORD(data + 0x14) & 0x02)
-				pr_subattr("Upstream Device", "Yes");
-			dmi_hp_203_devtyp("Device Type", data[0x16]);
-			dmi_hp_203_devloc("Device Location", data[0x17]);
-			pr_attr("Device Instance", "%d", data[0x18]);
-			pr_attr("Device Sub-Instance", "%d", data[0x19]);
-			dmi_hp_203_bayenc("Bay", data[0x1A]);
-			dmi_hp_203_bayenc("Enclosure", data[0x1B]);
-			pr_attr("Device Path", "%s", dmi_string(h, data[0x1C]));
-			pr_attr("Structured Name", "%s", dmi_string(h, data[0x1D]));
-			pr_attr("Device Name", "%s", dmi_string(h, data[0x1E]));
+				pr_subattr(entry, "Upstream Device", "Yes");
+			dmi_hp_203_devtyp(entry, "Device Type", data[0x16]);
+			dmi_hp_203_devloc(entry, "Device Location", data[0x17]);
+			pr_attr(entry, "Device Instance", "%d", data[0x18]);
+			pr_attr(entry, "Device Sub-Instance", "%d", data[0x19]);
+			dmi_hp_203_bayenc(entry, "Bay", data[0x1A]);
+			dmi_hp_203_bayenc(entry, "Enclosure", data[0x1B]);
+			pr_attr(entry, "Device Path", "%s", dmi_string(h, data[0x1C]));
+			pr_attr(entry, "Structured Name", "%s", dmi_string(h, data[0x1D]));
+			pr_attr(entry, "Device Name", "%s", dmi_string(h, data[0x1E]));
 			if (h->length < 0x22) break;
-			pr_attr("UEFI Location", "%s", dmi_string(h, data[0x1F]));
+			pr_attr(entry, "UEFI Location", "%s", dmi_string(h, data[0x1F]));
 			if (!(opt.flags & FLAG_QUIET))
 			{
 				if (WORD(data + 0x14) & 1)
-					pr_attr("Associated Real/Phys Handle", "0x%04X",
+					pr_attr(entry, "Associated Real/Phys Handle", "0x%04X",
 						WORD(data + 0x20));
 				else
-					pr_attr("Associated Real/Phys Handle", "N/A");
+					pr_attr(entry, "Associated Real/Phys Handle", "N/A");
 			}
 			if (h->length < 0x24) break;
-			pr_attr("PCI Part Number", "%s", dmi_string(h, data[0x22]));
-			pr_attr("Serial Number", "%s", dmi_string(h, data[0x23]));
+			pr_attr(entry, "PCI Part Number", "%s", dmi_string(h, data[0x22]));
+			pr_attr(entry, "Serial Number", "%s", dmi_string(h, data[0x23]));
 			if (h->length < 0x28) break;
-			pr_attr("Segment Group Number", "0x%04x", WORD(data + 0x24));
-			pr_attr("PCI Device", "%02x:%02x.%x",
+			pr_attr(entry, "Segment Group Number", "0x%04x", WORD(data + 0x24));
+			pr_attr(entry, "PCI Device", "%02x:%02x.%x",
 				data[0x26], data[0x27] >> 3, data[0x27] & 7);
 			break;
 
@@ -1032,13 +1032,13 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			 */
 			pr_handle_name(entry, "%s ProLiant System/Rack Locator", company);
 			if (h->length < 0x0B) break;
-			pr_attr("Rack Name", "%s", dmi_string(h, data[0x04]));
-			pr_attr("Enclosure Name", "%s", dmi_string(h, data[0x05]));
-			pr_attr("Enclosure Model", "%s", dmi_string(h, data[0x06]));
-			pr_attr("Enclosure Serial", "%s", dmi_string(h, data[0x0A]));
-			pr_attr("Enclosure Bays", "%d", data[0x08]);
-			pr_attr("Server Bay", "%s", dmi_string(h, data[0x07]));
-			pr_attr("Bays Filled", "%d", data[0x09]);
+			pr_attr(entry, "Rack Name", "%s", dmi_string(h, data[0x04]));
+			pr_attr(entry, "Enclosure Name", "%s", dmi_string(h, data[0x05]));
+			pr_attr(entry, "Enclosure Model", "%s", dmi_string(h, data[0x06]));
+			pr_attr(entry, "Enclosure Serial", "%s", dmi_string(h, data[0x0A]));
+			pr_attr(entry, "Enclosure Bays", "%d", data[0x08]);
+			pr_attr(entry, "Server Bay", "%s", dmi_string(h, data[0x07]));
+			pr_attr(entry, "Bays Filled", "%d", data[0x09]);
 			break;
 
 		case 209:
@@ -1070,7 +1070,7 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			ptr = 4;
 			while (h->length >= ptr + 8)
 			{
-				dmi_print_hp_net_iface_rec(nic,
+				dmi_print_hp_net_iface_rec(entry, nic,
 							   data[ptr + 0x01],
 							   data[ptr],
 							   &data[ptr + 0x02]);
@@ -1089,21 +1089,21 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s 64-bit CRU Information", company);
 			if (h->length < 0x18) break;
 			if (is_printable(data + 0x04, 4))
-				pr_attr("Signature", "0x%08x (%c%c%c%c)",
+				pr_attr(entry, "Signature", "0x%08x (%c%c%c%c)",
 					DWORD(data + 0x04),
 					data[0x04], data[0x05],
 					data[0x06], data[0x07]);
 			else
-				pr_attr("Signature", "0x%08x", DWORD(data + 0x04));
+				pr_attr(entry, "Signature", "0x%08x", DWORD(data + 0x04));
 			if (DWORD(data + 0x04) == 0x55524324)
 			{
 				u64 paddr = QWORD(data + 0x08);
 				paddr.l += DWORD(data + 0x14);
 				if (paddr.l < DWORD(data + 0x14))
 					paddr.h++;
-				pr_attr("Physical Address", "0x%08x%08x",
+				pr_attr(entry, "Physical Address", "0x%08x%08x",
 					paddr.h, paddr.l);
-				pr_attr("Length", "0x%08x", DWORD(data + 0x10));
+				pr_attr(entry, "Length", "0x%08x", DWORD(data + 0x10));
 			}
 			break;
 
@@ -1144,12 +1144,12 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			if (gen < G8) return 0;
 			pr_handle_name(entry, "%s Version Indicator", company);
 			if (h->length < 23) break;
-			dmi_hp_216_fw_type(WORD(data + 0x04));
-			pr_attr("Firmware Name String", "%s", dmi_string(h, data[0x06]));
-			pr_attr("Firmware Version String", "%s", dmi_string(h, data[0x07]));
-			dmi_hp_216_version(data[0x08], data + 0x09);
+			dmi_hp_216_fw_type(entry, WORD(data + 0x04));
+			pr_attr(entry, "Firmware Name String", "%s", dmi_string(h, data[0x06]));
+			pr_attr(entry, "Firmware Version String", "%s", dmi_string(h, data[0x07]));
+			dmi_hp_216_version(entry, data[0x08], data + 0x09);
 			if (WORD(data + 0x15))
-				pr_attr("Unique ID", "0x%04x", WORD(data + 0x15));
+				pr_attr(entry, "Unique ID", "0x%04x", WORD(data + 0x15));
 			break;
 
 		case 219:
@@ -1160,14 +1160,14 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			 */
 			pr_handle_name(entry, "%s ProLiant Information", company);
 			if (h->length < 0x08) break;
-			pr_attr("Power Features", "0x%08x", DWORD(data + 0x04));
+			pr_attr(entry, "Power Features", "0x%08x", DWORD(data + 0x04));
 			if (h->length < 0x0C) break;
-			pr_attr("Omega Features", "0x%08x", DWORD(data + 0x08));
+			pr_attr(entry, "Omega Features", "0x%08x", DWORD(data + 0x08));
 			if (h->length < 0x14) break;
 			feat = DWORD(data + 0x10);
-			pr_attr("Misc. Features", "0x%08x", feat);
-			pr_subattr("iCRU", "%s", feat & 0x0001 ? "Yes" : "No");
-			pr_subattr("UEFI", "%s", feat & 0x1400 ? "Yes" : "No");
+			pr_attr(entry, "Misc. Features", "0x%08x", feat);
+			pr_subattr(entry, "iCRU", "%s", feat & 0x0001 ? "Yes" : "No");
+			pr_subattr(entry,"UEFI", "%s", feat & 0x1400 ? "Yes" : "No");
 			break;
 
 		case 224:
@@ -1188,16 +1188,16 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			 */
 			pr_handle_name(entry, "%s Trusted Module (TPM or TCM) Status", company);
 			if (h->length < 0x05) break;
-			if (!dmi_hp_224_status(data[0x04]))
+			if (!dmi_hp_224_status(entry, data[0x04]))
 				break;
 			if (h->length < 0x0a) break;
-			dmi_hp_224_ex_status(data[0x04], data[0x05]);
-			dmi_hp_224_module_type(data[0x06]);
-			dmi_hp_224_module_attr(data[0x07]);
+			dmi_hp_224_ex_status(entry, data[0x04], data[0x05]);
+			dmi_hp_224_module_type(entry, data[0x06]);
+			dmi_hp_224_module_attr(entry, data[0x07]);
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x8));
+				pr_attr(entry, "Associated Handle", "0x%04X", WORD(data + 0x8));
 			if (h->length < 0x0c) break;
-			dmi_hp_224_chipid(WORD(data + 0x0a));
+			dmi_hp_224_chipid(entry, WORD(data + 0x0a));
 			break;
 
 		case 230:
@@ -1222,10 +1222,10 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s Power Supply Information", company);
 			if (h->length < 0x0B) break;
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
-			pr_attr("Manufacturer", "%s", dmi_string(h, data[0x06]));
-			pr_attr("Revision", "%s", dmi_string(h, data[0x07]));
-			dmi_hp_230_method_bus_seg_addr(data[0x08], data[0x09], data[0x0A]);
+				pr_attr(entry, "Associated Handle", "0x%04X", WORD(data + 0x4));
+			pr_attr(entry, "Manufacturer", "%s", dmi_string(h, data[0x06]));
+			pr_attr(entry, "Revision", "%s", dmi_string(h, data[0x07]));
+			dmi_hp_230_method_bus_seg_addr(entry, data[0x08], data[0x09], data[0x0A]);
 			break;
 
 		case 233:
@@ -1253,7 +1253,7 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			 * use 0xFF to use the internal counter.
 			 * */
 			nic = h->length > 0x28 ? data[0x28] : 0xFF;
-			dmi_print_hp_net_iface_rec(nic, data[0x06], data[0x07],
+			dmi_print_hp_net_iface_rec(entry, nic, data[0x06], data[0x07],
 						   &data[0x08]);
 			break;
 
@@ -1278,18 +1278,18 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			if (gen >= G11) return 0;
 			pr_handle_name(entry, "%s HDD Backplane FRU Information", company);
 			if (h->length < 0x08) break;
-			pr_attr("FRU I2C Address", "0x%X raw(0x%X)", data[0x4] >> 1, data[0x4]);
-			pr_attr("Box Number", "%d", WORD(data + 0x5));
-			pr_attr("NVRAM ID", "0x%X", WORD(data + 0x7));
+			pr_attr(entry, "FRU I2C Address", "0x%X raw(0x%X)", data[0x4] >> 1, data[0x4]);
+			pr_attr(entry, "Box Number", "%d", WORD(data + 0x5));
+			pr_attr(entry, "NVRAM ID", "0x%X", WORD(data + 0x7));
 			if (h->length < 0x11) break;
-			pr_attr("SAS Expander WWID", "0x%X", QWORD(data + 0x9));
+			pr_attr(entry, "SAS Expander WWID", "0x%X", QWORD(data + 0x9));
 			if (h->length < 0x12) break;
-			pr_attr("Total SAS Bays", "%d", data[0x11]);
+			pr_attr(entry, "Total SAS Bays", "%d", data[0x11]);
 			if (h->length < 0x15) break;
 			if (gen < G10P) {
-				pr_attr("A0 Bay Count", "%d", data[0x12]);
-				pr_attr("A2 Bay Count", "%d", data[0x13]);
-				pr_attr("Backplane Name", "%s", dmi_string(h, data[0x14]));
+				pr_attr(entry, "A0 Bay Count", "%d", data[0x12]);
+				pr_attr(entry, "A2 Bay Count", "%d", data[0x13]);
+				pr_attr(entry, "Backplane Name", "%s", dmi_string(h, data[0x14]));
 			}
 			break;
 
@@ -1313,14 +1313,14 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s DIMM Vendor Information", company);
 			if (h->length < 0x08) break;
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
-			pr_attr("DIMM Manufacturer", "%s", dmi_string(h, data[0x06]));
-			pr_attr("DIMM Manufacturer Part Number", "%s", dmi_string(h, data[0x07]));
+				pr_attr(entry, "Associated Handle", "0x%04X", WORD(data + 0x4));
+			pr_attr(entry, "DIMM Manufacturer", "%s", dmi_string(h, data[0x06]));
+			pr_attr(entry, "DIMM Manufacturer Part Number", "%s", dmi_string(h, data[0x07]));
 			if (h->length < 0x09) break;
-			pr_attr("DIMM Vendor Serial Number", "%s", dmi_string(h, data[0x08]));
+			pr_attr(entry, "DIMM Vendor Serial Number", "%s", dmi_string(h, data[0x08]));
 			if (h->length < 0x0B) break;
 			if (WORD(data + 0x09))
-				pr_attr("DIMM Manufacture Date", "20%02x-W%02x", data[0x09], data[0x0A]);
+				pr_attr(entry, "DIMM Manufacture Date", "20%02x-W%02x", data[0x09], data[0x0A]);
 			break;
 
 		case 238:
@@ -1346,18 +1346,18 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s Proliant USB Port Connector Correlation Record", company);
 			if (h->length < 0x0F) break;
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
-			pr_attr("PCI Device", "%02x:%02x.%x", data[0x6],
+				pr_attr(entry, "Associated Handle", "0x%04X", WORD(data + 0x4));
+			pr_attr(entry, "PCI Device", "%02x:%02x.%x", data[0x6],
 				data[0x7] >> 3, data[0x7] & 0x7);
-			dmi_hp_238_loc("Location", data[0x8]);
-			dmi_hp_238_flags("Management Port", WORD(data + 0x9));
-			pr_attr("Port Instance", "%d", data[0xB]);
+			dmi_hp_238_loc(entry, "Location", data[0x8]);
+			dmi_hp_238_flags(entry, "Management Port", WORD(data + 0x9));
+			pr_attr(entry, "Port Instance", "%d", data[0xB]);
 			if (data[0xC] != 0xFE)
-				pr_attr("Parent Hub Port Instance", "%d", data[0xC]);
+				pr_attr(entry, "Parent Hub Port Instance", "%d", data[0xC]);
 			else
-				pr_attr("Parent Hub Port Instance", "N/A");
-			dmi_hp_238_speed("Port Speed Capability", data[0xD]);
-			pr_attr("Device Path", "%s", dmi_string(h, data[0xE]));
+				pr_attr(entry, "Parent Hub Port Instance", "N/A");
+			dmi_hp_238_speed(entry, "Port Speed Capability", data[0xD]);
+			pr_attr(entry, "Device Path", "%s", dmi_string(h, data[0xE]));
 			break;
 
 		case 239:
@@ -1395,17 +1395,17 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s USB Device Correlation Record", company);
 			if (h->length < 0x17) break;
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x04));
-			pr_attr("USB Vendor ID", "0x%04x", WORD(data + 0x06));
-			pr_attr("Embedded SD Card", "%s", data[0x08] & 0x01 ? "Present" : "Empty");
-			dmi_hp_239_usb_device(data[0x0A], data[0x0B], data[0x0C]);
-			pr_attr("USB Product ID", "0x%04x", WORD(data + 0x0D));
+				pr_attr(entry, "Associated Handle", "0x%04X", WORD(data + 0x04));
+			pr_attr(entry, "USB Vendor ID", "0x%04x", WORD(data + 0x06));
+			pr_attr(entry, "Embedded SD Card", "%s", data[0x08] & 0x01 ? "Present" : "Empty");
+			dmi_hp_239_usb_device(entry, data[0x0A], data[0x0B], data[0x0C]);
+			pr_attr(entry, "USB Product ID", "0x%04x", WORD(data + 0x0D));
 			if (DWORD(data + 0x0F))
-				pr_attr("USB Capacity", "%u MB", DWORD(data + 0x0F));
-			pr_attr("UEFI Device Path", "%s", dmi_string(h, data[0x13]));
-			pr_attr("UEFI Device Name", "%s", dmi_string(h, data[0x14]));
-			pr_attr("Device Name", "%s", dmi_string(h, data[0x15]));
-			pr_attr("Device Location", "%s", dmi_string(h, data[0x16]));
+				pr_attr(entry, "USB Capacity", "%u MB", DWORD(data + 0x0F));
+			pr_attr(entry, "UEFI Device Path", "%s", dmi_string(h, data[0x13]));
+			pr_attr(entry, "UEFI Device Name", "%s", dmi_string(h, data[0x14]));
+			pr_attr(entry, "Device Name", "%s", dmi_string(h, data[0x15]));
+			pr_attr(entry, "Device Location", "%s", dmi_string(h, data[0x16]));
 			break;
 
 		case 240:
@@ -1433,21 +1433,21 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s Proliant Inventory Record", company);
 			if (h->length < 0x27) break;
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
-			pr_attr("Package Version", "0x%08X", DWORD(data + 0x6));
-			pr_attr("Version String", "%s", dmi_string(h, data[0x0A]));
+				pr_attr(entry, "Associated Handle", "0x%04X", WORD(data + 0x4));
+			pr_attr(entry, "Package Version", "0x%08X", DWORD(data + 0x6));
+			pr_attr(entry, "Version String", "%s", dmi_string(h, data[0x0A]));
 
 			if (DWORD(data + 0x0B))
-				dmi_print_memory_size("Image Size", QWORD(data + 0xB), 0);
+				dmi_print_memory_size(entry, "Image Size", QWORD(data + 0xB), 0);
 			else
-				pr_attr("Image Size", "Not Available");
+				pr_attr(entry, "Image Size", "Not Available");
 
 			dmi_hp_240_attr(QWORD(data + 0x13), QWORD(data + 0x1B));
 
 			if (DWORD(data + 0x23))
-				pr_attr("Lowest Supported Version", "0x%08X", DWORD(data + 0x23));
+				pr_attr(entry, "Lowest Supported Version", "0x%08X", DWORD(data + 0x23));
 			else
-				pr_attr("Lowest Supported Version", "Not Available");
+				pr_attr(entry, "Lowest Supported Version", "Not Available");
 			break;
 
 		case 242:
@@ -1490,41 +1490,41 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s ProLiant Hard Drive Inventory Record", company);
 			if (h->length < 0x2C) break;
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Associated Handle", "0x%04X", WORD(data + 0x4));
-			dmi_hp_242_hdd_type(data[0x06]);
-			pr_attr("ID", "%llx", QWORD(data + 0x07));
+				pr_attr(entry, "Associated Handle", "0x%04X", WORD(data + 0x4));
+			dmi_hp_242_hdd_type(entry, data[0x06]);
+			pr_attr(entry, "ID", "%llx", QWORD(data + 0x07));
 			if (h->length < 0x3E)
-				pr_attr("Capacity", "%u MB", DWORD(data + 0x0F));
+				pr_attr(entry, "Capacity", "%u MB", DWORD(data + 0x0F));
 			else
-				dmi_print_memory_size("Capacity", QWORD(data + 0x2C), 0);
+				dmi_print_memory_size(entry, "Capacity", QWORD(data + 0x2C), 0);
 			/* NB: Poweron low QWORD good for 2,104,351,365,926,255 years */
-			pr_attr("Poweron", "%ld hours", QWORD(data + 0x13));
+			pr_attr(entry, "Poweron", "%ld hours", QWORD(data + 0x13));
 			if (data[0x24])
-				pr_attr("Power Wattage", "%hhu W", data[0x24]);
+				pr_attr(entry, "Power Wattage", "%hhu W", data[0x24]);
 			else
-				pr_attr("Power Wattage", "%s", "Unknown");
-			dmi_hp_242_form_factor(data[0x25]);
+				pr_attr(entry, "Power Wattage", "%s", "Unknown");
+			dmi_hp_242_form_factor(entry, data[0x25]);
 			feat = data[0x26];
-			pr_attr("Health Status", "%s", (feat == 0x00) ? "OK" :
+			pr_attr(entry, "Health Status", "%s", (feat == 0x00) ? "OK" :
 							(feat == 0x01) ? "Warning" :
 							(feat == 0x02) ? "Critical" :
 							(feat == 0xFF) ? "Unknown" : "Reserved");
-			pr_attr("Serial Number", dmi_string(h, data[0x27]));
-			pr_attr("Model Number", dmi_string(h, data[0x28]));
-			pr_attr("Firmware Revision", dmi_string(h, data[0x29]));
-			pr_attr("Location", dmi_string(h, data[0x2A]));
+			pr_attr(entry, "Serial Number", dmi_string(h, data[0x27]));
+			pr_attr(entry, "Model Number", dmi_string(h, data[0x28]));
+			pr_attr(entry, "Firmware Revision", dmi_string(h, data[0x29]));
+			pr_attr(entry, "Location", dmi_string(h, data[0x2A]));
 			feat = data[0x2B];
-			pr_attr("Encryption Status", "%s", (feat == 0) ? "Not Encrypted" :
+			pr_attr(entry, "Encryption Status", "%s", (feat == 0) ? "Not Encrypted" :
 							(feat == 1) ? "Encrypted" :
 							(feat == 2) ? "Unknown" :
 							(feat == 3) ? "Not Supported" : "Reserved");
 			if (h->length < 0x3E) break;
-			pr_attr("Block Size", "%u bytes", DWORD(data + 0x34));
+			pr_attr(entry, "Block Size", "%u bytes", DWORD(data + 0x34));
 			/* Rotational Speed: 0 -> Not Reported, 1 -> N/A (SSD) */
 			if (data[0x38] > 1)
-				pr_attr("Rotational Speed", "%hhu RPM", data[0x38]);
-			dmi_hp_242_speed("Negotiated Speed", WORD(data + 0x3A));
-			dmi_hp_242_speed("Capable Speed", WORD(data + 0x3C));
+				pr_attr(entry, "Rotational Speed", "%hhu RPM", data[0x38]);
+			dmi_hp_242_speed(entry, "Negotiated Speed", WORD(data + 0x3A));
+			dmi_hp_242_speed(entry, "Capable Speed", WORD(data + 0x3C));
 			break;
 
 		case 245:
@@ -1557,7 +1557,7 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			pr_handle_name(entry, "%s ProLiant Extension Board Inventory Record", company);
 			if (h->length < 0x05) break;
 			if (data[0x04] == 0)
-				dmi_hp_245_pcie_riser(h);
+				dmi_hp_245_pcie_riser(entry, h);
 			break;
 
 		default:
@@ -1602,8 +1602,8 @@ static int dmi_decode_ibm_lenovo(json_object *entry, const struct dmi_header *h)
 				return 0;
 
 			pr_handle_name(entry, "ThinkVantage Technologies");
-			pr_attr("Version", "%u", data[0x04]);
-			pr_attr("Diagnostics", "%s",
+			pr_attr(entry, "Version", "%u", data[0x04]);
+			pr_attr(entry, "Diagnostics", "%s",
 				data[0x14] & 0x80 ? "Available" : "No");
 			break;
 
@@ -1641,7 +1641,7 @@ static int dmi_decode_ibm_lenovo(json_object *entry, const struct dmi_header *h)
 				return 0;
 
 			pr_handle_name(entry, "ThinkPad Device Presence Detection");
-			pr_attr("Fingerprint Reader", "%s",
+			pr_attr(entry, "Fingerprint Reader", "%s",
 				data[0x09] & 0x01 ? "Present" : "No");
 			break;
 
@@ -1674,8 +1674,8 @@ static int dmi_decode_ibm_lenovo(json_object *entry, const struct dmi_header *h)
 				return 0;
 
 			pr_handle_name(entry, "ThinkPad Embedded Controller Program");
-			pr_attr("Version ID", "%s", dmi_string(h, 1));
-			pr_attr("Release Date", "%s", dmi_string(h, 2));
+			pr_attr(entry, "Version ID", "%s", dmi_string(h, 1));
+			pr_attr(entry, "Release Date", "%s", dmi_string(h, 2));
 			break;
 
 		default:

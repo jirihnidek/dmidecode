@@ -276,7 +276,7 @@ static void dmi_dump(const struct dmi_header *h)
 }
 
 /* shift is 0 if the value is in bytes, 1 if it is in kilobytes */
-void dmi_print_memory_size(const char *attr, u64 code, int shift)
+void dmi_print_memory_size(json_object *entry, const char *attr, u64 code, int shift)
 {
 	unsigned long capacity;
 	u16 split[7];
@@ -316,14 +316,14 @@ void dmi_print_memory_size(const char *attr, u64 code, int shift)
 	else
 		capacity = split[i];
 
-	pr_attr(attr, "%lu %s", capacity, unit[i + shift]);
+	pr_attr(entry, attr, "%lu %s", capacity, unit[i + shift]);
 }
 
 /*
  * 7.1 BIOS Information (Type 0)
  */
 
-static void dmi_bios_runtime_size(u32 code)
+static void dmi_bios_runtime_size(json_object *entry, u32 code)
 {
 	const char *format;
 
@@ -337,10 +337,10 @@ static void dmi_bios_runtime_size(u32 code)
 		code >>= 10;
 	}
 
-	pr_attr("Runtime Size", format, code);
+	pr_attr(entry, "Runtime Size", format, code);
 }
 
-static void dmi_bios_rom_size(u8 code1, u16 code2)
+static void dmi_bios_rom_size(json_object *entry, u8 code1, u16 code2)
 {
 	static const char *unit[4] = {
 		"MB", "GB", out_of_spec, out_of_spec
@@ -349,10 +349,10 @@ static void dmi_bios_rom_size(u8 code1, u16 code2)
 	if (code1 != 0xFF)
 	{
 		u64 s = { .l = (code1 + 1) << 6 };
-		dmi_print_memory_size("ROM Size", s, 1);
+		dmi_print_memory_size(entry, "ROM Size", s, 1);
 	}
 	else
-		pr_attr("ROM Size", "%u %s", code2 & 0x3FFF, unit[code2 >> 14]);
+		pr_attr(entry, "ROM Size", "%u %s", code2 & 0x3FFF, unit[code2 >> 14]);
 }
 
 static void dmi_bios_characteristics(u64 code)
@@ -448,8 +448,8 @@ static void dmi_bios_characteristics_x2(u8 code)
  * 7.2 System Information (Type 1)
  */
 
-static void dmi_system_uuid(void (*print_cb)(const char *name, const char *format, ...),
-			    const char *attr, const u8 *p, u16 ver)
+static void dmi_system_uuid(void (*print_cb)(json_object *entry, const char *name, const char *format, ...),
+			    json_object *entry, const char *attr, const u8 *p, u16 ver)
 {
 	int only0xFF = 1, only0x00 = 1;
 	int i;
@@ -463,7 +463,7 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 	if (only0xFF)
 	{
 		if (print_cb)
-			print_cb(attr, "Not Present");
+			print_cb(entry, attr, "Not Present");
 		else
 			pr_printf("Not Present\n");
 		return;
@@ -471,7 +471,7 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 	if (only0x00)
 	{
 		if (print_cb)
-			print_cb(attr, "Not Settable");
+			print_cb(entry, attr, "Not Settable");
 		else
 			pr_printf("Not Settable\n");
 		return;
@@ -488,7 +488,7 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 	if (ver >= 0x0206)
 	{
 		if (print_cb)
-			print_cb(attr,
+			print_cb(entry, attr,
 				"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
 				p[3], p[2], p[1], p[0], p[5], p[4], p[7], p[6],
 				p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
@@ -500,7 +500,7 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 	else
 	{
 		if (print_cb)
-			print_cb(attr,
+			print_cb(entry, attr,
 				"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
 				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
 				p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
@@ -690,20 +690,20 @@ static const char *dmi_chassis_security_status(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_chassis_height(u8 code)
+static void dmi_chassis_height(json_object *entry, u8 code)
 {
 	if (code == 0x00)
-		pr_attr("Height", "Unspecified");
+		pr_attr(entry, "Height", "Unspecified");
 	else
-		pr_attr("Height", "%u U", code);
+		pr_attr(entry, "Height", "%u U", code);
 }
 
-static void dmi_chassis_power_cords(u8 code)
+static void dmi_chassis_power_cords(json_object *entry, u8 code)
 {
 	if (code == 0x00)
-		pr_attr("Number Of Power Cords", "Unspecified");
+		pr_attr(entry, "Number Of Power Cords", "Unspecified");
 	else
-		pr_attr("Number Of Power Cords", "%u", code);
+		pr_attr(entry, "Number Of Power Cords", "%u", code);
 }
 
 static void dmi_chassis_elements(u8 count, u8 len, const u8 *p)
@@ -1136,8 +1136,8 @@ static enum cpuid_type dmi_get_cpuid_type(const struct dmi_header *h)
 	return cpuid_none;
 }
 
-void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...),
-		     const char *label, enum cpuid_type sig, const u8 *p)
+void dmi_print_cpuid(void (*print_cb)(json_object *entry, const char *name, const char *format, ...),
+                     json_object *entry, const char *label, enum cpuid_type sig, const u8 *p)
 {
 	u32 eax, midr, jep106, soc_revision;
 	u16 dx;
@@ -1149,7 +1149,7 @@ void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...)
 			/*
 			 * 80386 have a different signature.
 			 */
-			print_cb(label,
+			print_cb(entry,label,
 				 "Type %u, Family %u, Major Stepping %u, Minor Stepping %u",
 				 dx >> 12, (dx >> 8) & 0xF,
 				 (dx >> 4) & 0xF, dx & 0xF);
@@ -1157,7 +1157,7 @@ void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...)
 
 		case cpuid_80486:
 			dx = WORD(p);
-			print_cb(label,
+			print_cb(entry, label,
 				 "Type %u, Family %u, Model %u, Stepping %u",
 				 (dx >> 12) & 0x3, (dx >> 8) & 0xF,
 				 (dx >> 4) & 0xF, dx & 0xF);
@@ -1172,7 +1172,7 @@ void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...)
 			 */
 			if (midr == 0)
 				return;
-			print_cb(label,
+			print_cb(entry, label,
 				 "Implementor 0x%02x, Variant 0x%x, Architecture %u, Part 0x%03x, Revision %u",
 				 midr >> 24, (midr >> 20) & 0xF,
 				 (midr >> 16) & 0xF, (midr >> 4) & 0xFFF, midr & 0xF);
@@ -1200,7 +1200,7 @@ void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...)
 			 *   Bit[31] must be zero
 			 *   Bits[30:0] SoC revision
 			 */
-			pr_attr("Signature",
+			pr_attr(entry, "Signature",
 				"JEP-106 Bank 0x%02x Manufacturer 0x%02x, SoC ID 0x%04x, SoC Revision 0x%08x",
 				(jep106 >> 24) & 0x7F, (jep106 >> 16) & 0x7F, jep106 & 0xFFFF, soc_revision);
 			return;
@@ -1213,7 +1213,7 @@ void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...)
 			 * explained in table 3-5, but DMI doesn't support this
 			 * yet.
 			 */
-			print_cb(label,
+			print_cb(entry, label,
 				 "Type %u, Family %u, Model %u, Stepping %u",
 				 (eax >> 12) & 0x3,
 				 ((eax >> 20) & 0xFF) + ((eax >> 8) & 0x0F),
@@ -1223,7 +1223,7 @@ void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...)
 
 		case cpuid_x86_amd: /* AMD, publication #25481 revision 2.28 */
 			eax = DWORD(p);
-			print_cb(label, "Family %u, Model %u, Stepping %u",
+			print_cb(entry, label, "Family %u, Model %u, Stepping %u",
 				 ((eax >> 8) & 0xF) + (((eax >> 8) & 0xF) == 0xF ? (eax >> 20) & 0xFF : 0),
 				 ((eax >> 4) & 0xF) | (((eax >> 8) & 0xF) == 0xF ? (eax >> 12) & 0xF0 : 0),
 				 eax & 0xF);
@@ -1231,14 +1231,14 @@ void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...)
 
 		case cpuid_loongarch: /* LoongArch Reference Manual, volume 1 */
 			eax = DWORD(p);
-			print_cb(label, "Processor Identity 0x%08x\n", eax);
+			print_cb(entry, label, "Processor Identity 0x%08x\n", eax);
 			break;
 		default:
 			return;
 	}
 }
 
-static void dmi_processor_id(const struct dmi_header *h)
+static void dmi_processor_id(json_object *entry, const struct dmi_header *h)
 {
 	/* Intel AP-485 revision 36, table 2-4 */
 	static const char *flags[32] = {
@@ -1285,10 +1285,10 @@ static void dmi_processor_id(const struct dmi_header *h)
 	 * CPUID instruction or another form of identification.
 	 */
 	if (!(opt.flags & FLAG_QUIET))
-		pr_attr("ID", "%02X %02X %02X %02X %02X %02X %02X %02X",
+		pr_attr(entry, "ID", "%02X %02X %02X %02X %02X %02X %02X %02X",
 			p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
 
-	dmi_print_cpuid(pr_attr, "Signature", sig, p);
+	dmi_print_cpuid(pr_attr, entry, "Signature", sig, p);
 
 	if (sig != cpuid_x86_intel && sig != cpuid_x86_amd)
 		return;
@@ -1308,7 +1308,7 @@ static void dmi_processor_id(const struct dmi_header *h)
 	pr_list_end();
 }
 
-static void dmi_processor_voltage(const char *attr, u8 code)
+static void dmi_processor_voltage(json_object *entry, const char *attr, u8 code)
 {
 	/* 7.5.4 */
 	static const char *voltage[] = {
@@ -1319,9 +1319,9 @@ static void dmi_processor_voltage(const char *attr, u8 code)
 	int i;
 
 	if (code & 0x80)
-		pr_attr(attr, "%.1f V", (float)(code & 0x7f) / 10);
+		pr_attr(entry, attr, "%.1f V", (float)(code & 0x7f) / 10);
 	else if ((code & 0x07) == 0x00)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
 	{
 		char voltage_str[18];
@@ -1338,25 +1338,25 @@ static void dmi_processor_voltage(const char *attr, u8 code)
 			}
 		}
 		if (off)
-			pr_attr(attr, voltage_str);
+			pr_attr(entry, attr, voltage_str);
 	}
 }
 
-static void dmi_processor_frequency(const char *attr, const u8 *p)
+static void dmi_processor_frequency(json_object *entry, const char *attr, const u8 *p)
 {
 	u16 code = WORD(p);
 
 	if (code)
 	{
 		if (attr)
-			pr_attr(attr, "%u MHz", code);
+			pr_attr(entry, attr, "%u MHz", code);
 		else
 			pr_printf("%u MHz\n", code);
 	}
 	else
 	{
 		if (attr)
-			pr_attr(attr, "Unknown");
+			pr_attr(entry, attr, "Unknown");
 		else
 			pr_printf("Unknown\n");
 	}
@@ -1462,21 +1462,21 @@ static const char *dmi_processor_upgrade(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_processor_cache(const char *attr, u16 code, const char *level,
+static void dmi_processor_cache(json_object *entry, const char *attr, u16 code, const char *level,
 				u16 ver)
 {
 	if (code == 0xFFFF)
 	{
 		if (ver >= 0x0203)
-			pr_attr(attr, "Not Provided");
+			pr_attr(entry, attr, "Not Provided");
 		else
-			pr_attr(attr, "No %s Cache", level);
+			pr_attr(entry, attr, "No %s Cache", level);
 	}
 	else
-		pr_attr(attr, "0x%04X", code);
+		pr_attr(entry, attr, "0x%04X", code);
 }
 
-static void dmi_processor_characteristics(const char *attr, u16 code)
+static void dmi_processor_characteristics(json_object *entry, const char *attr, u16 code)
 {
 	/* 7.5.9 */
 	static const char *characteristics[] = {
@@ -1491,7 +1491,7 @@ static void dmi_processor_characteristics(const char *attr, u16 code)
 	};
 
 	if ((code & 0x00FC) == 0)
-		pr_attr(attr, "None");
+		pr_attr(entry, attr, "None");
 	else
 	{
 		int i;
@@ -1527,7 +1527,7 @@ static const char *dmi_memory_controller_ed_method(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_memory_controller_ec_capabilities(const char *attr, u8 code)
+static void dmi_memory_controller_ec_capabilities(json_object *entry, const char *attr, u8 code)
 {
 	/* 7.6.2 */
 	static const char *capabilities[] = {
@@ -1540,7 +1540,7 @@ static void dmi_memory_controller_ec_capabilities(const char *attr, u8 code)
 	};
 
 	if ((code & 0x3F) == 0)
-		pr_attr(attr, "None");
+		pr_attr(entry, attr, "None");
 	else
 	{
 		int i;
@@ -1571,7 +1571,7 @@ static const char *dmi_memory_controller_interleave(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_memory_controller_speeds(const char *attr, u16 code)
+static void dmi_memory_controller_speeds(json_object *entry, const char *attr, u16 code)
 {
 	/* 7.6.4 */
 	const char *speeds[] = {
@@ -1583,7 +1583,7 @@ static void dmi_memory_controller_speeds(const char *attr, u16 code)
 	};
 
 	if ((code & 0x001F) == 0)
-		pr_attr(attr, "None");
+		pr_attr(entry, attr, "None");
 	else
 	{
 		int i;
@@ -1610,7 +1610,7 @@ static void dmi_memory_controller_slots(u8 count, const u8 *p)
  * 7.7 Memory Module Information (Type 6)
  */
 
-static void dmi_memory_module_types(const char *attr, u16 code, int flat)
+static void dmi_memory_module_types(json_object *entry, const char *attr, u16 code, int flat)
 {
 	/* 7.7.1 */
 	static const char *types[] = {
@@ -1628,7 +1628,7 @@ static void dmi_memory_module_types(const char *attr, u16 code, int flat)
 	};
 
 	if ((code & 0x07FF) == 0)
-		pr_attr(attr, "None");
+		pr_attr(entry, attr, "None");
 	else if (flat)
 	{
 		char type_str[68];
@@ -1645,7 +1645,7 @@ static void dmi_memory_module_types(const char *attr, u16 code, int flat)
 			}
 		}
 		if (off)
-			pr_attr(attr, type_str);
+			pr_attr(entry, attr, type_str);
 	}
 	else
 	{
@@ -1659,27 +1659,27 @@ static void dmi_memory_module_types(const char *attr, u16 code, int flat)
 	}
 }
 
-static void dmi_memory_module_connections(u8 code)
+static void dmi_memory_module_connections(json_object *entry, u8 code)
 {
 	if (code == 0xFF)
-		pr_attr("Bank Connections", "None");
+		pr_attr(entry, "Bank Connections", "None");
 	else if ((code & 0xF0) == 0xF0)
-		pr_attr("Bank Connections", "%u", code & 0x0F);
+		pr_attr(entry, "Bank Connections", "%u", code & 0x0F);
 	else if ((code & 0x0F) == 0x0F)
-		pr_attr("Bank Connections", "%u", code >> 4);
+		pr_attr(entry, "Bank Connections", "%u", code >> 4);
 	else
-		pr_attr("Bank Connections", "%u %u", code >> 4, code & 0x0F);
+		pr_attr(entry, "Bank Connections", "%u %u", code >> 4, code & 0x0F);
 }
 
-static void dmi_memory_module_speed(const char *attr, u8 code)
+static void dmi_memory_module_speed(json_object *entry, const char *attr, u8 code)
 {
 	if (code == 0)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "%u ns", code);
+		pr_attr(entry, attr, "%u ns", code);
 }
 
-static void dmi_memory_module_size(const char *attr, u8 code)
+static void dmi_memory_module_size(json_object *entry, const char *attr, u8 code)
 {
 	const char *connection;
 
@@ -1692,21 +1692,21 @@ static void dmi_memory_module_size(const char *attr, u8 code)
 	switch (code & 0x7F)
 	{
 		case 0x7D:
-			pr_attr(attr, "Not Determinable%s", connection);
+			pr_attr(entry, attr, "Not Determinable%s", connection);
 			break;
 		case 0x7E:
-			pr_attr(attr, "Disabled%s", connection);
+			pr_attr(entry, attr, "Disabled%s", connection);
 			break;
 		case 0x7F:
-			pr_attr(attr, "Not Installed");
+			pr_attr(entry, attr, "Not Installed");
 			return;
 		default:
-			pr_attr(attr, "%u MB%s", 1 << (code & 0x7F),
+			pr_attr(entry, attr, "%u MB%s", 1 << (code & 0x7F),
 				connection);
 	}
 }
 
-static void dmi_memory_module_error(u8 code)
+static void dmi_memory_module_error(json_object *entry, u8 code)
 {
 	static const char *status[] = {
 		"OK", /* 0x00 */
@@ -1716,9 +1716,9 @@ static void dmi_memory_module_error(u8 code)
 	};
 
 	if (code & (1 << 2))
-		pr_attr("Error Status", "See Event Log");
+		pr_attr(entry, "Error Status", "See Event Log");
 	else
-		pr_attr("Error Status", "%s", status[code & 0x03]);
+		pr_attr(entry, "Error Status", "%s", status[code & 0x03]);
 }
 
 /*
@@ -1750,7 +1750,7 @@ static const char *dmi_cache_location(u8 code)
 	return location[code];
 }
 
-static void dmi_cache_size_2(const char *attr, u32 code)
+static void dmi_cache_size_2(json_object *entry, const char *attr, u32 code)
 {
 	u64 size;
 
@@ -1767,16 +1767,16 @@ static void dmi_cache_size_2(const char *attr, u32 code)
 	}
 
 	/* Use a more convenient unit for large cache size */
-	dmi_print_memory_size(attr, size, 1);
+	dmi_print_memory_size(entry, attr, size, 1);
 }
 
-static void dmi_cache_size(const char *attr, u16 code)
+static void dmi_cache_size(json_object *entry, const char *attr, u16 code)
 {
-	dmi_cache_size_2(attr,
+	dmi_cache_size_2(entry, attr,
 			 (((u32)code & 0x8000LU) << 16) | (code & 0x7FFFLU));
 }
 
-static void dmi_cache_types(const char *attr, u16 code, int flat)
+static void dmi_cache_types(json_object *entry, const char *attr, u16 code, int flat)
 {
 	/* 7.8.2 */
 	static const char *types[] = {
@@ -1790,7 +1790,7 @@ static void dmi_cache_types(const char *attr, u16 code, int flat)
 	};
 
 	if ((code & 0x007F) == 0)
-		pr_attr(attr, "None");
+		pr_attr(entry, attr, "None");
 	else if (flat)
 	{
 		char type_str[70];
@@ -1807,7 +1807,7 @@ static void dmi_cache_types(const char *attr, u16 code, int flat)
 			}
 		}
 		if (off)
-			pr_attr(attr, type_str);
+			pr_attr(entry, attr, type_str);
 	}
 	else
 	{
@@ -2131,7 +2131,7 @@ static const char *dmi_slot_bus_width(u8 code, int hide_unknown)
 	return out_of_spec;
 }
 
-static void dmi_slot_type_with_width(u8 type, u8 width)
+static void dmi_slot_type_with_width(json_object *entry, u8 type, u8 width)
 {
 	const char *type_str, *width_str;
 
@@ -2139,9 +2139,9 @@ static void dmi_slot_type_with_width(u8 type, u8 width)
 	width_str = dmi_slot_bus_width(width, 1);
 
 	if (width_str)
-		pr_attr("Type", "%s %s", width_str, type_str);
+		pr_attr(entry, "Type", "%s %s", width_str, type_str);
 	else
-		pr_attr("Type", "%s", type_str);
+		pr_attr(entry, "Type", "%s", type_str);
 }
 
 static const char *dmi_slot_current_usage(u8 code)
@@ -2177,16 +2177,16 @@ static const char *dmi_slot_length(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_slot_id(u8 code1, u8 code2, u8 type)
+static void dmi_slot_id(json_object *entry, u8 code1, u8 code2, u8 type)
 {
 	/* 7.10.5 */
 	switch (type)
 	{
 		case 0x04: /* MCA */
-			pr_attr("ID", "%u", code1);
+			pr_attr(entry, "ID", "%u", code1);
 			break;
 		case 0x05: /* EISA */
-			pr_attr("ID", "%u", code1);
+			pr_attr(entry, "ID", "%u", code1);
 			break;
 		case 0x06: /* PCI */
 		case 0x0E: /* PCI */
@@ -2231,15 +2231,15 @@ static void dmi_slot_id(u8 code1, u8 code2, u8 type)
 		case 0xC2: /* PCI Express 5 */
 		case 0xC3: /* PCI Express 5 */
 		case 0xC4: /* PCI Express 6+ */
-			pr_attr("ID", "%u", code1);
+			pr_attr(entry, "ID", "%u", code1);
 			break;
 		case 0x07: /* PCMCIA */
-			pr_attr("ID", "Adapter %u, Socket %u", code1, code2);
+			pr_attr(entry, "ID", "Adapter %u, Socket %u", code1, code2);
 			break;
 	}
 }
 
-static void dmi_slot_characteristics(const char *attr, u8 code1, u8 code2)
+static void dmi_slot_characteristics(json_object *entry, const char *attr, u8 code1, u8 code2)
 {
 	/* 7.10.6 */
 	static const char *characteristics1[] = {
@@ -2263,9 +2263,9 @@ static void dmi_slot_characteristics(const char *attr, u8 code1, u8 code2)
 	};
 
 	if (code1 & (1 << 0))
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else if ((code1 & 0xFE) == 0 && (code2 & 0x07) == 0)
-		pr_attr(attr, "None");
+		pr_attr(entry, attr, "None");
 	else
 	{
 		int i;
@@ -2281,15 +2281,15 @@ static void dmi_slot_characteristics(const char *attr, u8 code1, u8 code2)
 	}
 }
 
-static void dmi_slot_segment_bus_func(u16 code1, u8 code2, u8 code3)
+static void dmi_slot_segment_bus_func(json_object *entry, u16 code1, u8 code2, u8 code3)
 {
 	/* 7.10.8 */
 	if (!(code1 == 0xFFFF && code2 == 0xFF && code3 == 0xFF))
-		pr_attr("Bus Address", "%04x:%02x:%02x.%x",
+		pr_attr(entry, "Bus Address", "%04x:%02x:%02x.%x",
 			code1, code2, code3 >> 3, code3 & 0x7);
 }
 
-static void dmi_slot_peers(u8 n, const u8 *data)
+static void dmi_slot_peers(json_object *entry, u8 n, const u8 *data)
 {
 	char attr[16];
 	int i;
@@ -2297,13 +2297,13 @@ static void dmi_slot_peers(u8 n, const u8 *data)
 	for (i = 1; i <= n; i++, data += 5)
 	{
 		sprintf(attr, "Peer Device %hhu", (u8)i);
-		pr_attr(attr, "%04x:%02x:%02x.%x (Width %u)",
+		pr_attr(entry, attr, "%04x:%02x:%02x.%x (Width %u)",
 			WORD(data), data[2], data[3] >> 3, data[3] & 0x07,
 			data[4]);
 	}
 }
 
-static void dmi_slot_information(u8 type, u8 code)
+static void dmi_slot_information(json_object *entry, u8 type, u8 code)
 {
 	switch (type)
 	{
@@ -2344,22 +2344,22 @@ static void dmi_slot_information(u8 type, u8 code)
 		case 0xC3: /* PCI Express 5 */
 		case 0xC4: /* PCI Express 6+ */
 			if (code)
-				pr_attr("PCI Express Generation", "%u", code);
+				pr_attr(entry, "PCI Express Generation", "%u", code);
 			break;
 	}
 }
 
-static void dmi_slot_physical_width(u8 code)
+static void dmi_slot_physical_width(json_object *entry, u8 code)
 {
 	if (code)
-		pr_attr("Slot Physical Width", "%s",
+		pr_attr(entry, "Slot Physical Width", "%s",
 			dmi_slot_bus_width(code, 0));
 }
 
-static void dmi_slot_pitch(u16 code)
+static void dmi_slot_pitch(json_object *entry, u16 code)
 {
 	if (code)
-		pr_attr("Pitch", "%u.%02u mm", code / 100, code % 100);
+		pr_attr(entry, "Pitch", "%u.%02u mm", code / 100, code % 100);
 }
 
 static const char *dmi_slot_height(u8 code)
@@ -2422,11 +2422,11 @@ static void dmi_on_board_devices(json_object *entry, const struct dmi_header *h)
 		else
 			pr_handle_name(entry, "On Board Device %d Information",
 				       i + 1);
-		pr_attr("Type", "%s",
+		pr_attr(entry, "Type", "%s",
 			dmi_on_board_devices_type(p[2 * i] & 0x7F));
-		pr_attr("Status", "%s",
+		pr_attr(entry, "Status", "%s",
 			p[2 * i] & 0x80 ? "Enabled" : "Disabled");
-		pr_attr("Description", "%s", dmi_string(h, p[2 * i + 1]));
+		pr_attr(entry, "Description", "%s", dmi_string(h, p[2 * i + 1]));
 	}
 }
 
@@ -2434,7 +2434,7 @@ static void dmi_on_board_devices(json_object *entry, const struct dmi_header *h)
  * 7.12 OEM Strings (Type 11)
  */
 
-static void dmi_oem_strings(const struct dmi_header *h)
+static void dmi_oem_strings(json_object *entry, const struct dmi_header *h)
 {
 	char attr[11];
 	u8 *p = h->data + 4;
@@ -2444,7 +2444,7 @@ static void dmi_oem_strings(const struct dmi_header *h)
 	for (i = 1; i <= count; i++)
 	{
 		sprintf(attr, "String %hhu", (u8)i);
-		pr_attr(attr, "%s",dmi_string(h, i));
+		pr_attr(entry, attr, "%s",dmi_string(h, i));
 	}
 }
 
@@ -2452,7 +2452,7 @@ static void dmi_oem_strings(const struct dmi_header *h)
  * 7.13 System Configuration Options (Type 12)
  */
 
-static void dmi_system_configuration_options(const struct dmi_header *h)
+static void dmi_system_configuration_options(json_object *entry, const struct dmi_header *h)
 {
 	char attr[11];
 	u8 *p = h->data + 4;
@@ -2462,7 +2462,7 @@ static void dmi_system_configuration_options(const struct dmi_header *h)
 	for (i = 1; i <= count; i++)
 	{
 		sprintf(attr, "Option %hhu", (u8)i);
-		pr_attr(attr, "%s",dmi_string(h, i));
+		pr_attr(entry, attr, "%s",dmi_string(h, i));
 	}
 }
 
@@ -2525,7 +2525,7 @@ static const char *dmi_event_log_method(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_event_log_status(u8 code)
+static void dmi_event_log_status(json_object *entry, u8 code)
 {
 	static const char *valid[] = {
 		"Invalid", /* 0 */
@@ -2536,11 +2536,11 @@ static void dmi_event_log_status(u8 code)
 		"Full" /* 1 */
 	};
 
-	pr_attr("Status", "%s, %s",
+	pr_attr(entry, "Status", "%s, %s",
 		valid[(code >> 0) & 1], full[(code >> 1) & 1]);
 }
 
-static void dmi_event_log_address(u8 method, const u8 *p)
+static void dmi_event_log_address(json_object *entry, u8 method, const u8 *p)
 {
 	/* 7.16.3 */
 	switch (method)
@@ -2548,17 +2548,17 @@ static void dmi_event_log_address(u8 method, const u8 *p)
 		case 0x00:
 		case 0x01:
 		case 0x02:
-			pr_attr("Access Address", "Index 0x%04X, Data 0x%04X",
+			pr_attr(entry, "Access Address", "Index 0x%04X, Data 0x%04X",
 				WORD(p), WORD(p + 2));
 			break;
 		case 0x03:
-			pr_attr("Access Address", "0x%08X", DWORD(p));
+			pr_attr(entry, "Access Address", "0x%08X", DWORD(p));
 			break;
 		case 0x04:
-			pr_attr("Access Address", "0x%04X", WORD(p));
+			pr_attr(entry, "Access Address", "0x%04X", WORD(p));
 			break;
 		default:
-			pr_attr("Access Address", "Unknown");
+			pr_attr(entry, "Access Address", "Unknown");
 	}
 }
 
@@ -2635,7 +2635,7 @@ static const char *dmi_event_log_descriptor_format(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_event_log_descriptors(u8 count, u8 len, const u8 *p)
+static void dmi_event_log_descriptors(json_object *entry, u8 count, u8 len, const u8 *p)
 {
 	/* 7.16.1 */
 	char attr[16];
@@ -2646,10 +2646,10 @@ static void dmi_event_log_descriptors(u8 count, u8 len, const u8 *p)
 		if (len >= 0x02)
 		{
 			sprintf(attr, "Descriptor %d", i + 1);
-			pr_attr(attr, "%s",
+			pr_attr(entry, attr, "%s",
 				dmi_event_log_descriptor_type(p[i * len]));
 			sprintf(attr, "Data Format %d", i + 1);
-			pr_attr(attr, "%s",
+			pr_attr(entry, attr, "%s",
 				dmi_event_log_descriptor_format(p[i * len + 1]));
 		}
 	}
@@ -2725,47 +2725,47 @@ static const char *dmi_memory_array_ec_type(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_memory_array_error_handle(u16 code)
+static void dmi_memory_array_error_handle(json_object *entry, u16 code)
 {
 	if (code == 0xFFFE)
-		pr_attr("Error Information Handle", "Not Provided");
+		pr_attr(entry, "Error Information Handle", "Not Provided");
 	else if (code == 0xFFFF)
-		pr_attr("Error Information Handle", "No Error");
+		pr_attr(entry, "Error Information Handle", "No Error");
 	else
-		pr_attr("Error Information Handle", "0x%04X", code);
+		pr_attr(entry, "Error Information Handle", "0x%04X", code);
 }
 
 /*
  * 7.18 Memory Device (Type 17)
  */
 
-static void dmi_memory_device_width(const char *attr, u16 code)
+static void dmi_memory_device_width(json_object *entry, const char *attr, u16 code)
 {
 	/*
 	 * If no memory module is present, width may be 0
 	 */
 	if (code == 0xFFFF || (code == 0 && !(opt.flags & FLAG_NO_QUIRKS)))
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "%u bits", code);
+		pr_attr(entry, attr, "%u bits", code);
 }
 
-static void dmi_memory_device_size(u16 code)
+static void dmi_memory_device_size(json_object *entry, u16 code)
 {
 	if (code == 0)
-		pr_attr("Size", "No Module Installed");
+		pr_attr(entry, "Size", "No Module Installed");
 	else if (code == 0xFFFF)
-		pr_attr("Size", "Unknown");
+		pr_attr(entry, "Size", "Unknown");
 	else
 	{
 		u64 s = { .l = code & 0x7FFF };
 		if (!(code & 0x8000))
 			s.l <<= 10;
-		dmi_print_memory_size("Size", s, 1);
+		dmi_print_memory_size(entry, "Size", s, 1);
 	}
 }
 
-static void dmi_memory_device_extended_size(u32 code)
+static void dmi_memory_device_extended_size(json_object *entry, u32 code)
 {
 	code &= 0x7FFFFFFFUL;
 
@@ -2774,19 +2774,19 @@ static void dmi_memory_device_extended_size(u32 code)
 	 * as an integer without rounding
 	 */
 	if (code & 0x3FFUL)
-		pr_attr("Size", "%lu MB", (unsigned long)code);
+		pr_attr(entry, "Size", "%lu MB", (unsigned long)code);
 	else if (code & 0xFFC00UL)
-		pr_attr("Size", "%lu GB", (unsigned long)code >> 10);
+		pr_attr(entry, "Size", "%lu GB", (unsigned long)code >> 10);
 	else
-		pr_attr("Size", "%lu TB", (unsigned long)code >> 20);
+		pr_attr(entry, "Size", "%lu TB", (unsigned long)code >> 20);
 }
 
-static void dmi_memory_voltage_value(const char *attr, u16 code)
+static void dmi_memory_voltage_value(json_object *entry, const char *attr, u16 code)
 {
 	if (code == 0)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, code % 100 ? "%g V" : "%.1f V",
+		pr_attr(entry, attr, code % 100 ? "%g V" : "%.1f V",
 			(float)code / 1000);
 }
 
@@ -2817,14 +2817,14 @@ static const char *dmi_memory_device_form_factor(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_memory_device_set(u8 code)
+static void dmi_memory_device_set(json_object *entry, u8 code)
 {
 	if (code == 0)
-		pr_attr("Set", "None");
+		pr_attr(entry, "Set", "None");
 	else if (code == 0xFF)
-		pr_attr("Set", "Unknown");
+		pr_attr(entry, "Set", "Unknown");
 	else
-		pr_attr("Set", "%u", code);
+		pr_attr(entry, "Set", "%u", code);
 }
 
 static const char *dmi_memory_device_type(u8 code)
@@ -2874,7 +2874,7 @@ static const char *dmi_memory_device_type(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_memory_device_type_detail(u16 code)
+static void dmi_memory_device_type_detail(json_object *entry, u16 code)
 {
 	/* 7.18.3 */
 	static const char *detail[] = {
@@ -2897,7 +2897,7 @@ static void dmi_memory_device_type_detail(u16 code)
 	char list[172];		/* Update length if you touch the array above */
 
 	if ((code & 0xFFFE) == 0)
-		pr_attr("Type Detail", "None");
+		pr_attr(entry, "Type Detail", "None");
 	else
 	{
 		int i, off = 0;
@@ -2907,29 +2907,29 @@ static void dmi_memory_device_type_detail(u16 code)
 			if (code & (1 << i))
 				off += sprintf(list + off, off ? " %s" : "%s",
 					       detail[i - 1]);
-		pr_attr("Type Detail", list);
+		pr_attr(entry, "Type Detail", list);
 	}
 }
 
-static void dmi_memory_device_speed(const char *attr, u16 code1, u32 code2)
+static void dmi_memory_device_speed(json_object *entry, const char *attr, u16 code1, u32 code2)
 {
 	if (code1 == 0xFFFF)
 	{
 		if (code2 == 0)
-			pr_attr(attr, "Unknown");
+			pr_attr(entry, attr, "Unknown");
 		else
-			pr_attr(attr, "%lu MT/s", code2);
+			pr_attr(entry, attr, "%lu MT/s", code2);
 	}
 	else
 	{
 		if (code1 == 0)
-			pr_attr(attr, "Unknown");
+			pr_attr(entry, attr, "Unknown");
 		else
-			pr_attr(attr, "%u MT/s", code1);
+			pr_attr(entry, attr, "%u MT/s", code1);
 	}
 }
 
-static void dmi_memory_technology(u8 code)
+static void dmi_memory_technology(json_object *entry, u8 code)
 {
 	/* 7.18.6 */
 	static const char * const technology[] = {
@@ -2942,12 +2942,12 @@ static void dmi_memory_technology(u8 code)
 		"Intel Optane DC persistent memory" /* 0x07 */
 	};
 	if (code >= 0x01 && code <= 0x07)
-		pr_attr("Memory Technology", "%s", technology[code - 0x01]);
+		pr_attr(entry, "Memory Technology", "%s", technology[code - 0x01]);
 	else
-		pr_attr("Memory Technology", "%s", out_of_spec);
+		pr_attr(entry, "Memory Technology", "%s", out_of_spec);
 }
 
-static void dmi_memory_operating_mode_capability(u16 code)
+static void dmi_memory_operating_mode_capability(json_object *entry, u16 code)
 {
 	/* 7.18.7 */
 	static const char * const mode[] = {
@@ -2960,7 +2960,7 @@ static void dmi_memory_operating_mode_capability(u16 code)
 	char list[99];		/* Update length if you touch the array above */
 
 	if ((code & 0xFFFE) == 0)
-		pr_attr("Memory Operating Mode Capability", "None");
+		pr_attr(entry, "Memory Operating Mode Capability", "None");
 	else {
 		int i, off = 0;
 
@@ -2969,42 +2969,42 @@ static void dmi_memory_operating_mode_capability(u16 code)
 			if (code & (1 << i))
 				off += sprintf(list + off, off ? " %s" : "%s",
 					       mode[i - 1]);
-		pr_attr("Memory Operating Mode Capability", list);
+		pr_attr(entry, "Memory Operating Mode Capability", list);
 	}
 }
 
-static void dmi_memory_manufacturer_id(const char *attr, u16 code)
+static void dmi_memory_manufacturer_id(json_object *entry, const char *attr, u16 code)
 {
 	/* 7.18.8 */
 	/* 7.18.10 */
 	/* LSB is 7-bit Odd Parity number of continuation codes */
 	if (code == 0)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "Bank %d, Hex 0x%02X",
+		pr_attr(entry, attr, "Bank %d, Hex 0x%02X",
 			(code & 0x7F) + 1, code >> 8);
 }
 
-static void dmi_memory_product_id(const char *attr, u16 code)
+static void dmi_memory_product_id(json_object *entry, const char *attr, u16 code)
 {
 	/* 7.18.9 */
 	/* 7.18.11 */
 	if (code == 0)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "0x%04X", code);
+		pr_attr(entry, attr, "0x%04X", code);
 }
 
-static void dmi_memory_size(const char *attr, u64 code)
+static void dmi_memory_size(json_object *entry, const char *attr, u64 code)
 {
 	/* 7.18.12 */
 	/* 7.18.13 */
 	if (code.h == 0xFFFFFFFF && code.l == 0xFFFFFFFF)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else if (code.h == 0x0 && code.l == 0x0)
-		pr_attr(attr, "None");
+		pr_attr(entry, attr, "None");
 	else
-		dmi_print_memory_size(attr, code, 0);
+		dmi_print_memory_size(entry, attr, code, 0);
 }
 
 /*
@@ -3067,81 +3067,81 @@ static const char *dmi_memory_error_operation(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_memory_error_syndrome(u32 code)
+static void dmi_memory_error_syndrome(json_object *entry, u32 code)
 {
 	if (code == 0x00000000)
-		pr_attr("Vendor Syndrome", "Unknown");
+		pr_attr(entry, "Vendor Syndrome", "Unknown");
 	else
-		pr_attr("Vendor Syndrome", "0x%08X", code);
+		pr_attr(entry, "Vendor Syndrome", "0x%08X", code);
 }
 
-static void dmi_32bit_memory_error_address(const char *attr, u32 code)
+static void dmi_32bit_memory_error_address(json_object *entry, const char *attr, u32 code)
 {
 	if (code == 0x80000000)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "0x%08X", code);
+		pr_attr(entry, attr, "0x%08X", code);
 }
 
 /*
  * 7.20 Memory Array Mapped Address (Type 19)
  */
 
-static void dmi_mapped_address_size(u32 code)
+static void dmi_mapped_address_size(json_object *entry, u32 code)
 {
 	if (code == 0)
-		pr_attr("Range Size", "Invalid");
+		pr_attr(entry, "Range Size", "Invalid");
 	else
 	{
 		u64 size;
 
 		size.h = 0;
 		size.l = code;
-		dmi_print_memory_size("Range Size", size, 1);
+		dmi_print_memory_size(entry, "Range Size", size, 1);
 	}
 }
 
-static void dmi_mapped_address_extended_size(u64 start, u64 end)
+static void dmi_mapped_address_extended_size(json_object *entry, u64 start, u64 end)
 {
 	if (start.h == end.h && start.l == end.l)
-		pr_attr("Range Size", "Invalid");
+		pr_attr(entry, "Range Size", "Invalid");
 	else
-		dmi_print_memory_size("Range Size", u64_range(start, end), 0);
+		dmi_print_memory_size(entry, "Range Size", u64_range(start, end), 0);
 }
 
 /*
  * 7.21 Memory Device Mapped Address (Type 20)
  */
 
-static void dmi_mapped_address_row_position(u8 code)
+static void dmi_mapped_address_row_position(json_object *entry, u8 code)
 {
 	if (code == 0)
-		pr_attr("Partition Row Position", "%s", out_of_spec);
+		pr_attr(entry, "Partition Row Position", "%s", out_of_spec);
 	else if (code == 0xFF)
-		pr_attr("Partition Row Position", "Unknown");
+		pr_attr(entry, "Partition Row Position", "Unknown");
 	else
-		pr_attr("Partition Row Position", "%u", code);
+		pr_attr(entry, "Partition Row Position", "%u", code);
 }
 
-static void dmi_mapped_address_interleave_position(u8 code)
+static void dmi_mapped_address_interleave_position(json_object *entry, u8 code)
 {
 	if (code != 0)
 	{
 		if (code == 0xFF)
-			pr_attr("Interleave Position", "Unknown");
+			pr_attr(entry, "Interleave Position", "Unknown");
 		else
-			pr_attr("Interleave Position", "%u", code);
+			pr_attr(entry, "Interleave Position", "%u", code);
 	}
 }
 
-static void dmi_mapped_address_interleaved_data_depth(u8 code)
+static void dmi_mapped_address_interleaved_data_depth(json_object *entry, u8 code)
 {
 	if (code != 0)
 	{
 		if (code == 0xFF)
-			pr_attr("Interleaved Data Depth", "Unknown");
+			pr_attr(entry, "Interleaved Data Depth", "Unknown");
 		else
-			pr_attr("Interleaved Data Depth", "%u", code);
+			pr_attr(entry, "Interleaved Data Depth", "%u", code);
 	}
 }
 
@@ -3220,28 +3220,28 @@ static const char *dmi_battery_chemistry(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_battery_capacity(u16 code, u8 multiplier)
+static void dmi_battery_capacity(json_object *entry, u16 code, u8 multiplier)
 {
 	if (code == 0)
-		pr_attr("Design Capacity", "Unknown");
+		pr_attr(entry, "Design Capacity", "Unknown");
 	else
-		pr_attr("Design Capacity", "%u mWh", code * multiplier);
+		pr_attr(entry, "Design Capacity", "%u mWh", code * multiplier);
 }
 
-static void dmi_battery_voltage(u16 code)
+static void dmi_battery_voltage(json_object *entry, u16 code)
 {
 	if (code == 0)
-		pr_attr("Design Voltage", "Unknown");
+		pr_attr(entry, "Design Voltage", "Unknown");
 	else
-		pr_attr("Design Voltage", "%u mV", code);
+		pr_attr(entry, "Design Voltage", "%u mV", code);
 }
 
-static void dmi_battery_maximum_error(u8 code)
+static void dmi_battery_maximum_error(json_object *entry, u8 code)
 {
 	if (code == 0xFF)
-		pr_attr("Maximum Error", "Unknown");
+		pr_attr(entry, "Maximum Error", "Unknown");
 	else
-		pr_attr("Maximum Error", "%u%%", code);
+		pr_attr(entry, "Maximum Error", "%u%%", code);
 }
 
 /*
@@ -3261,20 +3261,20 @@ static const char *dmi_system_reset_boot_option(u8 code)
 	return option[code];
 }
 
-static void dmi_system_reset_count(const char *attr, u16 code)
+static void dmi_system_reset_count(json_object *entry, const char *attr, u16 code)
 {
 	if (code == 0xFFFF)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "%u", code);
+		pr_attr(entry, attr, "%u", code);
 }
 
-static void dmi_system_reset_timer(const char *attr, u16 code)
+static void dmi_system_reset_timer(json_object *entry, const char *attr, u16 code)
 {
 	if (code == 0xFFFF)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "%u min", code);
+		pr_attr(entry, attr, "%u min", code);
 }
 
 /*
@@ -3297,7 +3297,7 @@ static const char *dmi_hardware_security_status(u8 code)
  * 7.26 System Power Controls (Type 25)
  */
 
-static void dmi_power_controls_power_on(const u8 *p)
+static void dmi_power_controls_power_on(json_object *entry, const u8 *p)
 {
 	char time[15];
 	int off = 0;
@@ -3324,7 +3324,7 @@ static void dmi_power_controls_power_on(const u8 *p)
 	else
 		off += sprintf(time + off, ":*");
 
-	pr_attr("Next Scheduled Power-on", time);
+	pr_attr(entry, "Next Scheduled Power-on", time);
 }
 
 /*
@@ -3370,28 +3370,28 @@ static const char *dmi_probe_status(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_voltage_probe_value(const char *attr, u16 code)
+static void dmi_voltage_probe_value(json_object *entry, const char *attr, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "%.3f V", (float)(i16)code / 1000);
+		pr_attr(entry, attr, "%.3f V", (float)(i16)code / 1000);
 }
 
-static void dmi_voltage_probe_resolution(u16 code)
+static void dmi_voltage_probe_resolution(json_object *entry, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr("Resolution", "Unknown");
+		pr_attr(entry, "Resolution", "Unknown");
 	else
-		pr_attr("Resolution", "%.1f mV", (float)code / 10);
+		pr_attr(entry, "Resolution", "%.1f mV", (float)code / 10);
 }
 
-static void dmi_probe_accuracy(u16 code)
+static void dmi_probe_accuracy(json_object *entry, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr("Accuracy", "Unknown");
+		pr_attr(entry, "Accuracy", "Unknown");
 	else
-		pr_attr("Accuracy", "%.2f%%", (float)code / 100);
+		pr_attr(entry, "Accuracy", "%.2f%%", (float)code / 100);
 }
 
 /*
@@ -3424,12 +3424,12 @@ static const char *dmi_cooling_device_type(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_cooling_device_speed(u16 code)
+static void dmi_cooling_device_speed(json_object *entry, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr("Nominal Speed", "Unknown Or Non-rotating");
+		pr_attr(entry, "Nominal Speed", "Unknown Or Non-rotating");
 	else
-		pr_attr("Nominal Speed", "%u rpm", code);
+		pr_attr(entry, "Nominal Speed", "%u rpm", code);
 }
 
 /*
@@ -3462,40 +3462,40 @@ static const char *dmi_temperature_probe_location(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_temperature_probe_value(const char *attr, u16 code)
+static void dmi_temperature_probe_value(json_object *entry, const char *attr, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "%.1f deg C", (float)(i16)code / 10);
+		pr_attr(entry, attr, "%.1f deg C", (float)(i16)code / 10);
 }
 
-static void dmi_temperature_probe_resolution(u16 code)
+static void dmi_temperature_probe_resolution(json_object *entry, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr("Resolution", "Unknown");
+		pr_attr(entry, "Resolution", "Unknown");
 	else
-		pr_attr("Resolution", "%.3f deg C", (float)code / 1000);
+		pr_attr(entry, "Resolution", "%.3f deg C", (float)code / 1000);
 }
 
 /*
  * 7.30 Electrical Current Probe (Type 29)
  */
 
-static void dmi_current_probe_value(const char *attr, u16 code)
+static void dmi_current_probe_value(json_object *entry, const char *attr, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "%.3f A", (float)(i16)code / 1000);
+		pr_attr(entry, attr, "%.3f A", (float)(i16)code / 1000);
 }
 
-static void dmi_current_probe_resolution(u16 code)
+static void dmi_current_probe_resolution(json_object *entry, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr("Resolution", "Unknown");
+		pr_attr(entry, "Resolution", "Unknown");
 	else
-		pr_attr("Resolution", "%.1f mA", (float)code / 10);
+		pr_attr(entry, "Resolution", "%.1f mA", (float)code / 10);
 }
 
 /*
@@ -3529,12 +3529,12 @@ static const char *dmi_system_boot_status(u8 code)
  * 7.34 64-bit Memory Error Information (Type 33)
  */
 
-static void dmi_64bit_memory_error_address(const char *attr, u64 code)
+static void dmi_64bit_memory_error_address(json_object *entry, const char *attr, u64 code)
 {
 	if (code.h == 0x80000000 && code.l == 0x00000000)
-		pr_attr(attr, "Unknown");
+		pr_attr(entry, attr, "Unknown");
 	else
-		pr_attr(attr, "0x%08X%08X", code.h, code.l);
+		pr_attr(entry, attr, "0x%08X%08X", code.h, code.l);
 }
 
 /*
@@ -3622,7 +3622,7 @@ static const char *dmi_memory_channel_type(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_memory_channel_devices(u8 count, const u8 *p)
+static void dmi_memory_channel_devices(json_object *entry, u8 count, const u8 *p)
 {
 	char attr[18];
 	int i;
@@ -3630,11 +3630,11 @@ static void dmi_memory_channel_devices(u8 count, const u8 *p)
 	for (i = 1; i <= count; i++)
 	{
 		sprintf(attr, "Device %hhu Load", (u8)i);
-		pr_attr(attr, "%u", p[3 * i]);
+		pr_attr(entry, attr, "%u", p[3 * i]);
 		if (!(opt.flags & FLAG_QUIET))
 		{
 			sprintf(attr, "Device %hhu Handle", (u8)i);
-			pr_attr(attr, "0x%04X", WORD(p + 3 * i + 1));
+			pr_attr(entry, attr, "0x%04X", WORD(p + 3 * i + 1));
 		}
 	}
 }
@@ -3659,16 +3659,16 @@ static const char *dmi_ipmi_interface_type(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_ipmi_base_address(u8 type, const u8 *p, u8 lsb)
+static void dmi_ipmi_base_address(json_object *entry, u8 type, const u8 *p, u8 lsb)
 {
 	if (type == 0x04) /* SSIF */
 	{
-		pr_attr("Base Address", "0x%02X (SMBus)", (*p) >> 1);
+		pr_attr(entry, "Base Address", "0x%02X (SMBus)", (*p) >> 1);
 	}
 	else
 	{
 		u64 address = QWORD(p);
-		pr_attr("Base Address", "0x%08X%08X (%s)",
+		pr_attr(entry, "Base Address", "0x%08X%08X (%s)",
 			address.h, (address.l & ~1) | lsb,
 			address.l & 1 ? "I/O" : "Memory-mapped");
 	}
@@ -3692,12 +3692,12 @@ static const char *dmi_ipmi_register_spacing(u8 code)
  * 7.40 System Power Supply (Type 39)
  */
 
-static void dmi_power_supply_power(u16 code)
+static void dmi_power_supply_power(json_object *entry, u16 code)
 {
 	if (code == 0x8000)
-		pr_attr("Max Power Capacity", "Unknown");
+		pr_attr(entry, "Max Power Capacity", "Unknown");
 	else
-		pr_attr("Max Power Capacity", "%u W", (unsigned int)code);
+		pr_attr(entry, "Max Power Capacity", "%u W", (unsigned int)code);
 }
 
 static const char *dmi_power_supply_type(u8 code)
@@ -3776,26 +3776,26 @@ static void dmi_additional_info(json_object *entry, const struct dmi_header *h)
 		length = p[0x00];
 		if (length < 0x05 || h->length < offset + length) break;
 
-		pr_attr("Referenced Handle", "0x%04x",
+		pr_attr(entry, "Referenced Handle", "0x%04x",
 			WORD(p + 0x01));
-		pr_attr("Referenced Offset", "0x%02x",
+		pr_attr(entry, "Referenced Offset", "0x%02x",
 			p[0x03]);
-		pr_attr("String", "%s",
+		pr_attr(entry, "String", "%s",
 			dmi_string(h, p[0x04]));
 
 		switch (length - 0x05)
 		{
 			case 1:
-				pr_attr("Value", "0x%02x", p[0x05]);
+				pr_attr(entry, "Value", "0x%02x", p[0x05]);
 				break;
 			case 2:
-				pr_attr("Value", "0x%04x", WORD(p + 0x05));
+				pr_attr(entry, "Value", "0x%04x", WORD(p + 0x05));
 				break;
 			case 4:
-				pr_attr("Value", "0x%08x", DWORD(p + 0x05));
+				pr_attr(entry, "Value", "0x%08x", DWORD(p + 0x05));
 				break;
 			default:
-				pr_attr("Value", "Unexpected size");
+				pr_attr(entry, "Value", "Unexpected size");
 				break;
 		}
 
@@ -3901,7 +3901,7 @@ static const char *dmi_address_decode(u8 *data, char *storage, u8 addrtype)
 /*
  * DSP0270: 8.4: Parse the protocol record format
  */
-static void dmi_parse_protocol_record(u8 *rec)
+static void dmi_parse_protocol_record(json_object *entry, u8 *rec)
 {
 	u8 rid;
 	u8 rlen;
@@ -3921,7 +3921,7 @@ static void dmi_parse_protocol_record(u8 *rec)
 	/* DSP0270: 8.4: Protocol Record Data */
 	rdata = &rec[0x2];
 
-	pr_attr("Protocol ID", "%02x (%s)", rid,
+	pr_attr(entry, "Protocol ID", "%02x (%s)", rid,
 		dmi_protocol_record_type(rid));
 
 	/*
@@ -3951,7 +3951,7 @@ static void dmi_parse_protocol_record(u8 *rec)
 	 * endianness of the field is always little after version 2.6.0
 	 * we can just pick a sufficiently recent version here.
 	 */
-	dmi_system_uuid(pr_subattr, "Service UUID", &rdata[0], 0x311);
+	dmi_system_uuid(pr_subattr, entry, "Service UUID", &rdata[0], 0x311);
 
 	/*
 	 * DSP0270: 8.4.1: Redfish Over IP Host IP Assignment Type
@@ -3959,13 +3959,13 @@ static void dmi_parse_protocol_record(u8 *rec)
 	 * uses decimal, so as to make it more comparable
 	 */
 	assign_val = rdata[16];
-	pr_subattr("Host IP Assignment Type", "%s",
+	pr_subattr(entry,"Host IP Assignment Type", "%s",
 		dmi_protocol_assignment_type(assign_val));
 
 	/* DSP0270: 8.4.1: Redfish Over IP Host Address format */
 	addrtype = rdata[17];
 	addrstr = dmi_address_type(addrtype);
-	pr_subattr("Host IP Address Format", "%s",
+	pr_subattr(entry,"Host IP Address Format", "%s",
 		addrstr);
 
 	/* DSP0270: 8.4.1 IP Assignment types */
@@ -3974,25 +3974,25 @@ static void dmi_parse_protocol_record(u8 *rec)
 	{
 		/* DSP0270: 8.4.1: the Host IPv[4|6] Address */
 		sprintf(attr, "%s Address", addrstr);
-		pr_subattr(attr, "%s",
+		pr_subattr(entry,attr, "%s",
 			dmi_address_decode(&rdata[18], buf, addrtype));
 
 		/* DSP0270: 8.4.1: Prints the Host IPv[4|6] Mask */
 		sprintf(attr, "%s Mask", addrstr);
-		pr_subattr(attr, "%s",
+		pr_subattr(entry,attr, "%s",
 			dmi_address_decode(&rdata[34], buf, addrtype));
 	}
 
 	/* DSP0270: 8.4.1: Get the Redfish Service IP Discovery Type */
 	assign_val = rdata[50];
 	/* Redfish Service IP Discovery type mirrors Host IP Assignment type */
-	pr_subattr("Redfish Service IP Discovery Type", "%s",
+	pr_subattr(entry,"Redfish Service IP Discovery Type", "%s",
 		dmi_protocol_assignment_type(assign_val));
 
 	/* DSP0270: 8.4.1: Get the Redfish Service IP Address Format */
 	addrtype = rdata[51];
 	addrstr = dmi_address_type(addrtype);
-	pr_subattr("Redfish Service IP Address Format", "%s",
+	pr_subattr(entry,"Redfish Service IP Address Format", "%s",
 		addrstr);
 
 	if (assign_val == 0x1 || assign_val == 0x3)
@@ -4002,21 +4002,21 @@ static void dmi_parse_protocol_record(u8 *rec)
 
 		/* DSP0270: 8.4.1: Prints the Redfish IPv[4|6] Service Address */
 		sprintf(attr, "%s Redfish Service Address", addrstr);
-		pr_subattr(attr, "%s",
+		pr_subattr(entry,attr, "%s",
 			dmi_address_decode(&rdata[52], buf,
 			addrtype));
 
 		/* DSP0270: 8.4.1: Prints the Redfish IPv[4|6] Service Mask */
 		sprintf(attr, "%s Redfish Service Mask", addrstr);
-		pr_subattr(attr, "%s",
+		pr_subattr(entry,attr, "%s",
 			dmi_address_decode(&rdata[68], buf,
 			addrtype));
 
 		/* DSP0270: 8.4.1: Redfish vlan and port info */
 		port = WORD(&rdata[84]);
 		vlan = DWORD(&rdata[86]);
-		pr_subattr("Redfish Service Port", "%hu", port);
-		pr_subattr("Redfish Service Vlan", "%u", vlan);
+		pr_subattr(entry,"Redfish Service Port", "%hu", port);
+		pr_subattr(entry,"Redfish Service Vlan", "%u", vlan);
 	}
 
 	/* DSP0270: 8.4.1: Redfish host length and name */
@@ -4033,7 +4033,7 @@ static void dmi_parse_protocol_record(u8 *rec)
 		hname = out_of_spec;
 		hlen = strlen(out_of_spec);
 	}
-	pr_subattr("Redfish Service Hostname", "%.*s", hlen, hname);
+	pr_subattr(entry,"Redfish Service Hostname", "%.*s", hlen, hname);
 }
 
 /*
@@ -4077,7 +4077,7 @@ static void dmi_device_characteristics(u16 code)
 	}
 }
 
-static void dmi_parse_controller_structure(const struct dmi_header *h)
+static void dmi_parse_controller_structure(json_object *entry, const struct dmi_header *h)
 {
 	int i;
 	u8 *data = h->data;
@@ -4107,7 +4107,7 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 		return;
 
 	type = data[0x4];
-	pr_attr("Host Interface Type", "%s",
+	pr_attr(entry, "Host Interface Type", "%s",
 		dmi_management_controller_host_type(type));
 
 	/*
@@ -4122,17 +4122,17 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 		/* DSP0270: 8.3.1 Table 3: Device Type values */
 		type = data[0x6];
 
-		pr_attr("Device Type", "%s",
+		pr_attr(entry, "Device Type", "%s",
 			dmi_parse_device_type(type));
 		if (type == 0x2 && len >= 5)
 		{
 			/* USB Device Type - need at least 6 bytes */
 			u8 *usbdata = &data[0x7];
 			/* USB Device Descriptor: idVendor */
-			pr_attr("idVendor", "0x%04x",
+			pr_attr(entry, "idVendor", "0x%04x",
 				WORD(&usbdata[0x0]));
 			/* USB Device Descriptor: idProduct */
-			pr_attr("idProduct", "0x%04x",
+			pr_attr(entry, "idProduct", "0x%04x",
 				WORD(&usbdata[0x2]));
 			/*
 			 * USB Serial number is here, but its useless, don't
@@ -4144,16 +4144,16 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 			/* PCI Device Type - Need at least 8 bytes */
 			u8 *pcidata = &data[0x7];
 			/* PCI Device Descriptor: VendorID */
-			pr_attr("VendorID", "0x%04x",
+			pr_attr(entry, "VendorID", "0x%04x",
 				WORD(&pcidata[0x0]));
 			/* PCI Device Descriptor: DeviceID */
-			pr_attr("DeviceID", "0x%04x",
+			pr_attr(entry, "DeviceID", "0x%04x",
 				WORD(&pcidata[0x2]));
 			/* PCI Device Descriptor: PCI SubvendorID */
-			pr_attr("SubVendorID", "0x%04x",
+			pr_attr(entry, "SubVendorID", "0x%04x",
 				WORD(&pcidata[0x4]));
 			/* PCI Device Descriptor: PCI SubdeviceID */
-			pr_attr("SubDeviceID", "0x%04x",
+			pr_attr(entry, "SubDeviceID", "0x%04x",
 				WORD(&pcidata[0x6]));
 		}
 		else if (type == 0x4 && len >= 0x0d)
@@ -4161,10 +4161,10 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 			/* USB Device Type v2 - need at least 12 bytes */
 			u8 *usbdata = &data[7];
 			/* USB Device Descriptor v2: idVendor */
-			pr_attr("idVendor", "0x%04x",
+			pr_attr(entry, "idVendor", "0x%04x",
 				WORD(&usbdata[0x1]));
 			/* USB Device Descriptor v2: idProduct */
-			pr_attr("idProduct", "0x%04x",
+			pr_attr(entry, "idProduct", "0x%04x",
 				WORD(&usbdata[0x3]));
 
 			/*
@@ -4173,7 +4173,7 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 			 */
 
 			/* USB Device Descriptor v2: MAC Address */
-			pr_attr("MAC Address", "%02x:%02x:%02x:%02x:%02x:%02x",
+			pr_attr(entry, "MAC Address", "%02x:%02x:%02x:%02x:%02x:%02x",
 				usbdata[0x6], usbdata[0x7], usbdata[0x8],
 				usbdata[0x9], usbdata[0xa], usbdata[0xb]);
 
@@ -4188,7 +4188,7 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 				/* USB Device Descriptor v2: Credential Bootstrapping Handle */
 				if (WORD(&usbdata[0x0c]) & 0x1)
 				{
-					pr_attr("Credential Bootstrapping Handle", "0x%04x",
+					pr_attr(entry, "Credential Bootstrapping Handle", "0x%04x",
 							WORD(&usbdata[0xe]));
 				}
 			}
@@ -4198,25 +4198,25 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 			/* PCI Device Type v2 - Need at least 19 bytes */
 			u8 *pcidata = &data[0x7];
 			/* PCI Device Descriptor v2: VendorID */
-			pr_attr("VendorID", "0x%04x",
+			pr_attr(entry, "VendorID", "0x%04x",
 				WORD(&pcidata[0x1]));
 			/* PCI Device Descriptor v2: DeviceID */
-			pr_attr("DeviceID", "0x%04x",
+			pr_attr(entry, "DeviceID", "0x%04x",
 				WORD(&pcidata[0x3]));
 			/* PCI Device Descriptor v2: PCI SubvendorID */
-			pr_attr("SubVendorID", "0x%04x",
+			pr_attr(entry, "SubVendorID", "0x%04x",
 				WORD(&pcidata[0x5]));
 			/* PCI Device Descriptor v2: PCI SubdeviceID */
-			pr_attr("SubDeviceID", "0x%04x",
+			pr_attr(entry, "SubDeviceID", "0x%04x",
 				WORD(&pcidata[0x7]));
 			/* PCI Device Descriptor v2: MAC Address */
-			pr_attr("MAC Address", "%02x:%02x:%02x:%02x:%02x:%02x",
+			pr_attr(entry, "MAC Address", "%02x:%02x:%02x:%02x:%02x:%02x",
 				pcidata[0x9], pcidata[0xa], pcidata[0xb],
 				pcidata[0xc], pcidata[0xd], pcidata[0xe]);
 			/* PCI Device Descriptor v2:
 			 *		Segment Group Number, Bus Number, Device/Function Number
 			 */
-			dmi_slot_segment_bus_func(WORD(&pcidata[0xf]), pcidata[0x11], pcidata[0x12]);
+			dmi_slot_segment_bus_func(entry, WORD(&pcidata[0xf]), pcidata[0x11], pcidata[0x12]);
 
 			/* DSP0270 v1.3.0 support */
 			if (len >= 0x18)
@@ -4228,7 +4228,7 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 				/* PCI Device Descriptor v2: Credential Bootstrapping Handle */
 				if (WORD(&pcidata[0x13]) & 0x1)
 				{
-					pr_attr("Credential Bootstrapping Handle", "0x%04x",
+					pr_attr(entry, "Credential Bootstrapping Handle", "0x%04x",
 							WORD(&pcidata[0x15]));
 				}
 			}
@@ -4238,7 +4238,7 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 			/* OEM Device Type - Need at least 4 bytes */
 			u8 *oemdata = &data[0x7];
 			/* OEM Device Descriptor: IANA */
-			pr_attr("Vendor ID", "0x%02x:0x%02x:0x%02x:0x%02x",
+			pr_attr(entry, "Vendor ID", "0x%02x:0x%02x:0x%02x:0x%02x",
 				oemdata[0x0], oemdata[0x1],
 				oemdata[0x2], oemdata[0x3]);
 		}
@@ -4286,7 +4286,7 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
 				return;
 			}
 
-			dmi_parse_protocol_record(rec);
+			dmi_parse_protocol_record(entry, rec);
 
 			/*
 			 * DSP0270: 8.4.1
@@ -4305,7 +4305,7 @@ static void dmi_parse_controller_structure(const struct dmi_header *h)
  * 7.44 TPM Device (Type 43)
  */
 
-static void dmi_tpm_vendor_id(const u8 *p)
+static void dmi_tpm_vendor_id(json_object *entry, const u8 *p)
 {
 	char vendor_id[5];
 	int i;
@@ -4322,7 +4322,7 @@ static void dmi_tpm_vendor_id(const u8 *p)
 	/* Terminate the string */
 	vendor_id[i] = '\0';
 
-	pr_attr("Vendor ID", "%s", vendor_id);
+	pr_attr(entry, "Vendor ID", "%s", vendor_id);
 }
 
 static void dmi_tpm_characteristics(u64 code)
@@ -4418,11 +4418,11 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 		case 0: /* 7.1 BIOS Information */
 			pr_handle_name(entry, "BIOS Information");
 			if (h->length < 0x12) break;
-			pr_attr("Vendor", "%s",
+			pr_attr(entry, "Vendor", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Version", "%s",
+			pr_attr(entry, "Version", "%s",
 				dmi_string(h, data[0x05]));
-			pr_attr("Release Date", "%s",
+			pr_attr(entry, "Release Date", "%s",
 				dmi_string(h, data[0x08]));
 			/*
 			 * On IA-64 and UEFI-based systems, the BIOS base
@@ -4431,11 +4431,11 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			 */
 			if (WORD(data + 0x06) != 0)
 			{
-				pr_attr("Address", "0x%04X0",
+				pr_attr(entry, "Address", "0x%04X0",
 					WORD(data + 0x06));
-				dmi_bios_runtime_size((0x10000 - WORD(data + 0x06)) << 4);
+				dmi_bios_runtime_size(entry, (0x10000 - WORD(data + 0x06)) << 4);
 			}
-			dmi_bios_rom_size(data[0x09], h->length < 0x1A ? 16 : WORD(data + 0x18));
+			dmi_bios_rom_size(entry, data[0x09], h->length < 0x1A ? 16 : WORD(data + 0x18));
 			pr_list_start("Characteristics", NULL);
 			dmi_bios_characteristics(QWORD(data + 0x0A));
 			pr_list_end();
@@ -4445,58 +4445,58 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			dmi_bios_characteristics_x2(data[0x13]);
 			if (h->length < 0x18) break;
 			if (data[0x14] != 0xFF && data[0x15] != 0xFF)
-				pr_attr("BIOS Revision", "%u.%u",
+				pr_attr(entry, "BIOS Revision", "%u.%u",
 					data[0x14], data[0x15]);
 			if (data[0x16] != 0xFF && data[0x17] != 0xFF)
-				pr_attr("Firmware Revision", "%u.%u",
+				pr_attr(entry, "Firmware Revision", "%u.%u",
 					data[0x16], data[0x17]);
 			break;
 
 		case 1: /* 7.2 System Information */
 			pr_handle_name(entry, "System Information");
 			if (h->length < 0x08) break;
-			pr_attr("Manufacturer", "%s",
+			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Product Name", "%s",
+			pr_attr(entry, "Product Name", "%s",
 				dmi_string(h, data[0x05]));
-			pr_attr("Version", "%s",
+			pr_attr(entry, "Version", "%s",
 				dmi_string(h, data[0x06]));
-			pr_attr("Serial Number", "%s",
+			pr_attr(entry, "Serial Number", "%s",
 				dmi_string(h, data[0x07]));
 			if (h->length < 0x19) break;
-			dmi_system_uuid(pr_attr, "UUID", data + 0x08, ver);
-			pr_attr("Wake-up Type", "%s",
+			dmi_system_uuid(pr_attr, entry, "UUID", data + 0x08, ver);
+			pr_attr(entry, "Wake-up Type", "%s",
 				dmi_system_wake_up_type(data[0x18]));
 			if (h->length < 0x1B) break;
-			pr_attr("SKU Number", "%s",
+			pr_attr(entry, "SKU Number", "%s",
 				dmi_string(h, data[0x19]));
-			pr_attr("Family", "%s",
+			pr_attr(entry, "Family", "%s",
 				dmi_string(h, data[0x1A]));
 			break;
 
 		case 2: /* 7.3 Base Board Information */
 			pr_handle_name(entry, "Base Board Information");
 			if (h->length < 0x08) break;
-			pr_attr("Manufacturer", "%s",
+			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Product Name", "%s",
+			pr_attr(entry, "Product Name", "%s",
 				dmi_string(h, data[0x05]));
-			pr_attr("Version", "%s",
+			pr_attr(entry, "Version", "%s",
 				dmi_string(h, data[0x06]));
-			pr_attr("Serial Number", "%s",
+			pr_attr(entry, "Serial Number", "%s",
 				dmi_string(h, data[0x07]));
 			if (h->length < 0x09) break;
-			pr_attr("Asset Tag", "%s",
+			pr_attr(entry, "Asset Tag", "%s",
 				dmi_string(h, data[0x08]));
 			if (h->length < 0x0A) break;
 			dmi_base_board_features(data[0x09]);
 			if (h->length < 0x0E) break;
-			pr_attr("Location In Chassis", "%s",
+			pr_attr(entry, "Location In Chassis", "%s",
 				dmi_string(h, data[0x0A]));
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Chassis Handle", "0x%04X",
+				pr_attr(entry, "Chassis Handle", "0x%04X",
 					WORD(data + 0x0B));
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_base_board_type(data[0x0D]));
 			if (h->length < 0x0F) break;
 			if (h->length < 0x0F + data[0x0E] * sizeof(u16)) break;
@@ -4507,219 +4507,219 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 		case 3: /* 7.4 Chassis Information */
 			pr_handle_name(entry, "Chassis Information");
 			if (h->length < 0x09) break;
-			pr_attr("Manufacturer", "%s",
+			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_chassis_type(data[0x05]));
-			pr_attr("Lock", "%s",
+			pr_attr(entry, "Lock", "%s",
 				dmi_chassis_lock(data[0x05] >> 7));
-			pr_attr("Version", "%s",
+			pr_attr(entry, "Version", "%s",
 				dmi_string(h, data[0x06]));
-			pr_attr("Serial Number", "%s",
+			pr_attr(entry, "Serial Number", "%s",
 				dmi_string(h, data[0x07]));
-			pr_attr("Asset Tag", "%s",
+			pr_attr(entry, "Asset Tag", "%s",
 				dmi_string(h, data[0x08]));
 			if (h->length < 0x0D) break;
-			pr_attr("Boot-up State", "%s",
+			pr_attr(entry, "Boot-up State", "%s",
 				dmi_chassis_state(data[0x09]));
-			pr_attr("Power Supply State", "%s",
+			pr_attr(entry, "Power Supply State", "%s",
 				dmi_chassis_state(data[0x0A]));
-			pr_attr("Thermal State", "%s",
+			pr_attr(entry, "Thermal State", "%s",
 				dmi_chassis_state(data[0x0B]));
-			pr_attr("Security Status", "%s",
+			pr_attr(entry, "Security Status", "%s",
 				dmi_chassis_security_status(data[0x0C]));
 			if (h->length < 0x11) break;
-			pr_attr("OEM Information", "0x%08X",
+			pr_attr(entry, "OEM Information", "0x%08X",
 				DWORD(data + 0x0D));
 			if (h->length < 0x13) break;
-			dmi_chassis_height(data[0x11]);
-			dmi_chassis_power_cords(data[0x12]);
+			dmi_chassis_height(entry, data[0x11]);
+			dmi_chassis_power_cords(entry, data[0x12]);
 			if (h->length < 0x15) break;
 			if (h->length < 0x15 + data[0x13] * data[0x14]) break;
 			dmi_chassis_elements(data[0x13], data[0x14], data + 0x15);
 			if (h->length < 0x16 + data[0x13] * data[0x14]) break;
-			pr_attr("SKU Number", "%s",
+			pr_attr(entry, "SKU Number", "%s",
 				dmi_string(h, data[0x15 + data[0x13] * data[0x14]]));
 			break;
 
 		case 4: /* 7.5 Processor Information */
 			pr_handle_name(entry, "Processor Information");
 			if (h->length < 0x1A) break;
-			pr_attr("Socket Designation", "%s",
+			pr_attr(entry, "Socket Designation", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_processor_type(data[0x05]));
-			pr_attr("Family", "%s",
+			pr_attr(entry, "Family", "%s",
 				dmi_processor_family(h, ver));
-			pr_attr("Manufacturer", "%s",
+			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x07]));
-			dmi_processor_id(h);
-			pr_attr("Version", "%s",
+			dmi_processor_id(entry, h);
+			pr_attr(entry, "Version", "%s",
 				dmi_string(h, data[0x10]));
-			dmi_processor_voltage("Voltage", data[0x11]);
-			dmi_processor_frequency("External Clock", data + 0x12);
-			dmi_processor_frequency("Max Speed", data + 0x14);
-			dmi_processor_frequency("Current Speed", data + 0x16);
+			dmi_processor_voltage(entry, "Voltage", data[0x11]);
+			dmi_processor_frequency(entry, "External Clock", data + 0x12);
+			dmi_processor_frequency(entry, "Max Speed", data + 0x14);
+			dmi_processor_frequency(entry, "Current Speed", data + 0x16);
 			if (data[0x18] & (1 << 6))
-				pr_attr("Status", "Populated, %s",
+				pr_attr(entry, "Status", "Populated, %s",
 					dmi_processor_status(data[0x18] & 0x07));
 			else
-				pr_attr("Status", "Unpopulated");
-			pr_attr("Upgrade", "%s",
+				pr_attr(entry, "Status", "Unpopulated");
+			pr_attr(entry, "Upgrade", "%s",
 				dmi_processor_upgrade(data[0x19]));
 			if (h->length < 0x20) break;
 			if (!(opt.flags & FLAG_QUIET))
 			{
-				dmi_processor_cache("L1 Cache Handle",
+				dmi_processor_cache(entry, "L1 Cache Handle",
 						    WORD(data + 0x1A), "L1", ver);
-				dmi_processor_cache("L2 Cache Handle",
+				dmi_processor_cache(entry, "L2 Cache Handle",
 						    WORD(data + 0x1C), "L2", ver);
-				dmi_processor_cache("L3 Cache Handle",
+				dmi_processor_cache(entry, "L3 Cache Handle",
 						    WORD(data + 0x1E), "L3", ver);
 			}
 			if (h->length < 0x23) break;
-			pr_attr("Serial Number", "%s",
+			pr_attr(entry, "Serial Number", "%s",
 				dmi_string(h, data[0x20]));
-			pr_attr("Asset Tag", "%s",
+			pr_attr(entry, "Asset Tag", "%s",
 				dmi_string(h, data[0x21]));
-			pr_attr("Part Number", "%s",
+			pr_attr(entry, "Part Number", "%s",
 				dmi_string(h, data[0x22]));
 			if (h->length < 0x28) break;
 			if (data[0x23] != 0)
-				pr_attr("Core Count", "%u",
+				pr_attr(entry, "Core Count", "%u",
 					h->length >= 0x2C && data[0x23] == 0xFF ?
 					WORD(data + 0x2A) : data[0x23]);
 			if (data[0x24] != 0)
-				pr_attr("Core Enabled", "%u",
+				pr_attr(entry, "Core Enabled", "%u",
 					h->length >= 0x2E && data[0x24] == 0xFF ?
 					WORD(data + 0x2C) : data[0x24]);
 			if (data[0x25] != 0)
-				pr_attr("Thread Count", "%u",
+				pr_attr(entry, "Thread Count", "%u",
 					h->length >= 0x30 && data[0x25] == 0xFF ?
 					WORD(data + 0x2E) : data[0x25]);
 			if (h->length >= 0x32 && WORD(data + 0x30) != 0)
-				pr_attr("Thread Enabled", "%u",
+				pr_attr(entry, "Thread Enabled", "%u",
 					WORD(data + 0x30));
-			dmi_processor_characteristics("Characteristics",
+			dmi_processor_characteristics(entry, "Characteristics",
 						      WORD(data + 0x26));
 			break;
 
 		case 5: /* 7.6 Memory Controller Information */
 			pr_handle_name(entry, "Memory Controller Information");
 			if (h->length < 0x0F) break;
-			pr_attr("Error Detecting Method", "%s",
+			pr_attr(entry, "Error Detecting Method", "%s",
 				dmi_memory_controller_ed_method(data[0x04]));
-			dmi_memory_controller_ec_capabilities("Error Correcting Capabilities",
+			dmi_memory_controller_ec_capabilities(entry, "Error Correcting Capabilities",
 							      data[0x05]);
-			pr_attr("Supported Interleave", "%s",
+			pr_attr(entry, "Supported Interleave", "%s",
 				dmi_memory_controller_interleave(data[0x06]));
-			pr_attr("Current Interleave", "%s",
+			pr_attr(entry, "Current Interleave", "%s",
 				dmi_memory_controller_interleave(data[0x07]));
-			pr_attr("Maximum Memory Module Size", "%u MB",
+			pr_attr(entry, "Maximum Memory Module Size", "%u MB",
 				1 << data[0x08]);
-			pr_attr("Maximum Total Memory Size", "%u MB",
+			pr_attr(entry, "Maximum Total Memory Size", "%u MB",
 				data[0x0E] * (1 << data[0x08]));
-			dmi_memory_controller_speeds("Supported Speeds",
+			dmi_memory_controller_speeds(entry, "Supported Speeds",
 						     WORD(data + 0x09));
-			dmi_memory_module_types("Supported Memory Types",
+			dmi_memory_module_types(entry, "Supported Memory Types",
 						WORD(data + 0x0B), 0);
-			dmi_processor_voltage("Memory Module Voltage", data[0x0D]);
+			dmi_processor_voltage(entry, "Memory Module Voltage", data[0x0D]);
 			if (h->length < 0x0F + data[0x0E] * sizeof(u16)) break;
 			dmi_memory_controller_slots(data[0x0E], data + 0x0F);
 			if (h->length < 0x10 + data[0x0E] * sizeof(u16)) break;
-			dmi_memory_controller_ec_capabilities("Enabled Error Correcting Capabilities",
+			dmi_memory_controller_ec_capabilities(entry, "Enabled Error Correcting Capabilities",
 							      data[0x0F + data[0x0E] * sizeof(u16)]);
 			break;
 
 		case 6: /* 7.7 Memory Module Information */
 			pr_handle_name(entry, "Memory Module Information");
 			if (h->length < 0x0C) break;
-			pr_attr("Socket Designation", "%s",
+			pr_attr(entry, "Socket Designation", "%s",
 				dmi_string(h, data[0x04]));
-			dmi_memory_module_connections(data[0x05]);
-			dmi_memory_module_speed("Current Speed", data[0x06]);
-			dmi_memory_module_types("Type", WORD(data + 0x07), 1);
-			dmi_memory_module_size("Installed Size", data[0x09]);
-			dmi_memory_module_size("Enabled Size", data[0x0A]);
-			dmi_memory_module_error(data[0x0B]);
+			dmi_memory_module_connections(entry, data[0x05]);
+			dmi_memory_module_speed(entry, "Current Speed", data[0x06]);
+			dmi_memory_module_types(entry, "Type", WORD(data + 0x07), 1);
+			dmi_memory_module_size(entry, "Installed Size", data[0x09]);
+			dmi_memory_module_size(entry, "Enabled Size", data[0x0A]);
+			dmi_memory_module_error(entry, data[0x0B]);
 			break;
 
 		case 7: /* 7.8 Cache Information */
 			pr_handle_name(entry, "Cache Information");
 			if (h->length < 0x0F) break;
-			pr_attr("Socket Designation", "%s",
+			pr_attr(entry, "Socket Designation", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Configuration", "%s, %s, Level %u",
+			pr_attr(entry, "Configuration", "%s, %s, Level %u",
 				WORD(data + 0x05) & 0x0080 ? "Enabled" : "Disabled",
 				WORD(data + 0x05) & 0x0008 ? "Socketed" : "Not Socketed",
 				(WORD(data + 0x05) & 0x0007) + 1);
-			pr_attr("Operational Mode", "%s",
+			pr_attr(entry, "Operational Mode", "%s",
 				dmi_cache_mode((WORD(data + 0x05) >> 8) & 0x0003));
-			pr_attr("Location", "%s",
+			pr_attr(entry, "Location", "%s",
 				dmi_cache_location((WORD(data + 0x05) >> 5) & 0x0003));
 			if (h->length >= 0x1B)
-				dmi_cache_size_2("Installed Size", DWORD(data + 0x17));
+				dmi_cache_size_2(entry, "Installed Size", DWORD(data + 0x17));
 			else
-				dmi_cache_size("Installed Size", WORD(data + 0x09));
+				dmi_cache_size(entry, "Installed Size", WORD(data + 0x09));
 			if (h->length >= 0x17)
-				dmi_cache_size_2("Maximum Size", DWORD(data + 0x13));
+				dmi_cache_size_2(entry, "Maximum Size", DWORD(data + 0x13));
 			else
-				dmi_cache_size("Maximum Size", WORD(data + 0x07));
-			dmi_cache_types("Supported SRAM Types", WORD(data + 0x0B), 0);
-			dmi_cache_types("Installed SRAM Type", WORD(data + 0x0D), 1);
+				dmi_cache_size(entry, "Maximum Size", WORD(data + 0x07));
+			dmi_cache_types(entry, "Supported SRAM Types", WORD(data + 0x0B), 0);
+			dmi_cache_types(entry, "Installed SRAM Type", WORD(data + 0x0D), 1);
 			if (h->length < 0x13) break;
-			dmi_memory_module_speed("Speed", data[0x0F]);
-			pr_attr("Error Correction Type", "%s",
+			dmi_memory_module_speed(entry, "Speed", data[0x0F]);
+			pr_attr(entry, "Error Correction Type", "%s",
 				dmi_cache_ec_type(data[0x10]));
-			pr_attr("System Type", "%s",
+			pr_attr(entry, "System Type", "%s",
 				dmi_cache_type(data[0x11]));
-			pr_attr("Associativity", "%s",
+			pr_attr(entry, "Associativity", "%s",
 				dmi_cache_associativity(data[0x12]));
 			break;
 
 		case 8: /* 7.9 Port Connector Information */
 			pr_handle_name(entry, "Port Connector Information");
 			if (h->length < 0x09) break;
-			pr_attr("Internal Reference Designator", "%s",
+			pr_attr(entry, "Internal Reference Designator", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Internal Connector Type", "%s",
+			pr_attr(entry, "Internal Connector Type", "%s",
 				dmi_port_connector_type(data[0x05]));
-			pr_attr("External Reference Designator", "%s",
+			pr_attr(entry, "External Reference Designator", "%s",
 				dmi_string(h, data[0x06]));
-			pr_attr("External Connector Type", "%s",
+			pr_attr(entry, "External Connector Type", "%s",
 				dmi_port_connector_type(data[0x07]));
-			pr_attr("Port Type", "%s",
+			pr_attr(entry, "Port Type", "%s",
 				dmi_port_type(data[0x08]));
 			break;
 
 		case 9: /* 7.10 System Slots */
 			pr_handle_name(entry, "System Slot Information");
 			if (h->length < 0x0C) break;
-			pr_attr("Designation", "%s",
+			pr_attr(entry, "Designation", "%s",
 				dmi_string(h, data[0x04]));
-			dmi_slot_type_with_width(data[0x05], data[0x06]);
-			pr_attr("Current Usage", "%s",
+			dmi_slot_type_with_width(entry, data[0x05], data[0x06]);
+			pr_attr(entry, "Current Usage", "%s",
 				dmi_slot_current_usage(data[0x07]));
-			pr_attr("Length", "%s",
+			pr_attr(entry, "Length", "%s",
 				dmi_slot_length(data[0x08]));
-			dmi_slot_id(data[0x09], data[0x0A], data[0x05]);
+			dmi_slot_id(entry, data[0x09], data[0x0A], data[0x05]);
 			if (h->length < 0x0D)
-				dmi_slot_characteristics("Characteristics", data[0x0B], 0x00);
+				dmi_slot_characteristics(entry, "Characteristics", data[0x0B], 0x00);
 			else
-				dmi_slot_characteristics("Characteristics", data[0x0B], data[0x0C]);
+				dmi_slot_characteristics(entry, "Characteristics", data[0x0B], data[0x0C]);
 			if (h->length < 0x11) break;
-			dmi_slot_segment_bus_func(WORD(data + 0x0D), data[0x0F], data[0x10]);
+			dmi_slot_segment_bus_func(entry, WORD(data + 0x0D), data[0x0F], data[0x10]);
 			if (h->length < 0x13) break;
-			pr_attr("Data Bus Width", "%u", data[0x11]);
-			pr_attr("Peer Devices", "%u", data[0x12]);
+			pr_attr(entry, "Data Bus Width", "%u", data[0x11]);
+			pr_attr(entry, "Peer Devices", "%u", data[0x12]);
 			if (h->length < 0x13 + data[0x12] * 5) break;
-			dmi_slot_peers(data[0x12], data + 0x13);
+			dmi_slot_peers(entry, data[0x12], data + 0x13);
 			if (h->length < 0x17 + data[0x12] * 5) break;
-			dmi_slot_information(data[0x05], data[0x13 + data[0x12] * 5]);
-			dmi_slot_physical_width(data[0x14 + data[0x12] * 5]);
-			dmi_slot_pitch(WORD(data + 0x15 + data[0x12] * 5));
+			dmi_slot_information(entry, data[0x05], data[0x13 + data[0x12] * 5]);
+			dmi_slot_physical_width(entry, data[0x14 + data[0x12] * 5]);
+			dmi_slot_pitch(entry, WORD(data + 0x15 + data[0x12] * 5));
 			if (h->length < 0x18 + data[0x12] * 5) break;
-			pr_attr("Height", "%s",
+			pr_attr(entry, "Height", "%s",
 				dmi_slot_height(data[0x17 + data[0x12] * 5]));
 			break;
 
@@ -4730,13 +4730,13 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 		case 11: /* 7.12 OEM Strings */
 			pr_handle_name(entry, "OEM Strings");
 			if (h->length < 0x05) break;
-			dmi_oem_strings(h);
+			dmi_oem_strings(entry, h);
 			break;
 
 		case 12: /* 7.13 System Configuration Options */
 			pr_handle_name(entry, "System Configuration Options");
 			if (h->length < 0x05) break;
-			dmi_system_configuration_options(h);
+			dmi_system_configuration_options(entry, h);
 			break;
 
 		case 13: /* 7.14 BIOS Language Information */
@@ -4744,20 +4744,20 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			if (h->length < 0x16) break;
 			if (ver >= 0x0201)
 			{
-				pr_attr("Language Description Format", "%s",
+				pr_attr(entry, "Language Description Format", "%s",
 					dmi_bios_language_format(data[0x05]));
 			}
 			pr_list_start("Installable Languages", "%u", data[0x04]);
 			dmi_bios_languages(h);
 			pr_list_end();
-			pr_attr("Currently Installed Language", "%s",
+			pr_attr(entry, "Currently Installed Language", "%s",
 				dmi_string(h, data[0x15]));
 			break;
 
 		case 14: /* 7.15 Group Associations */
 			pr_handle_name(entry, "Group Associations");
 			if (h->length < 0x05) break;
-			pr_attr("Name", "%s",
+			pr_attr(entry, "Name", "%s",
 				dmi_string(h, data[0x04]));
 			pr_list_start("Items", "%u",
 				(h->length - 0x05) / 3);
@@ -4768,46 +4768,46 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 		case 15: /* 7.16 System Event Log */
 			pr_handle_name(entry, "System Event Log");
 			if (h->length < 0x14) break;
-			pr_attr("Area Length", "%u bytes",
+			pr_attr(entry, "Area Length", "%u bytes",
 				WORD(data + 0x04));
-			pr_attr("Header Start Offset", "0x%04X",
+			pr_attr(entry, "Header Start Offset", "0x%04X",
 				WORD(data + 0x06));
 			if (WORD(data + 0x08) - WORD(data + 0x06))
-				pr_attr("Header Length", "%u byte%s",
+				pr_attr(entry, "Header Length", "%u byte%s",
 					WORD(data + 0x08) - WORD(data + 0x06),
 					WORD(data + 0x08) - WORD(data + 0x06) > 1 ? "s" : "");
-			pr_attr("Data Start Offset", "0x%04X",
+			pr_attr(entry, "Data Start Offset", "0x%04X",
 				WORD(data + 0x08));
-			pr_attr("Access Method", "%s",
+			pr_attr(entry, "Access Method", "%s",
 				dmi_event_log_method(data[0x0A]));
-			dmi_event_log_address(data[0x0A], data + 0x10);
-			dmi_event_log_status(data[0x0B]);
-			pr_attr("Change Token", "0x%08X",
+			dmi_event_log_address(entry, data[0x0A], data + 0x10);
+			dmi_event_log_status(entry, data[0x0B]);
+			pr_attr(entry, "Change Token", "0x%08X",
 				DWORD(data + 0x0C));
 			if (h->length < 0x17) break;
-			pr_attr("Header Format", "%s",
+			pr_attr(entry, "Header Format", "%s",
 				dmi_event_log_header_type(data[0x14]));
-			pr_attr("Supported Log Type Descriptors", "%u",
+			pr_attr(entry, "Supported Log Type Descriptors", "%u",
 				data[0x15]);
 			if (h->length < 0x17 + data[0x15] * data[0x16]) break;
-			dmi_event_log_descriptors(data[0x15], data[0x16], data + 0x17);
+			dmi_event_log_descriptors(entry, data[0x15], data[0x16], data + 0x17);
 			break;
 
 		case 16: /* 7.17 Physical Memory Array */
 			pr_handle_name(entry, "Physical Memory Array");
 			if (h->length < 0x0F) break;
-			pr_attr("Location", "%s",
+			pr_attr(entry, "Location", "%s",
 				dmi_memory_array_location(data[0x04]));
-			pr_attr("Use", "%s",
+			pr_attr(entry, "Use", "%s",
 				dmi_memory_array_use(data[0x05]));
-			pr_attr("Error Correction Type", "%s",
+			pr_attr(entry, "Error Correction Type", "%s",
 				dmi_memory_array_ec_type(data[0x06]));
 			if (DWORD(data + 0x07) == 0x80000000)
 			{
 				if (h->length < 0x17)
-					pr_attr("Maximum Capacity", "Unknown");
+					pr_attr(entry, "Maximum Capacity", "Unknown");
 				else
-					dmi_print_memory_size("Maximum Capacity",
+					dmi_print_memory_size(entry, "Maximum Capacity",
 							      QWORD(data + 0x0F), 0);
 			}
 			else
@@ -4816,12 +4816,12 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 
 				capacity.h = 0;
 				capacity.l = DWORD(data + 0x07);
-				dmi_print_memory_size("Maximum Capacity",
+				dmi_print_memory_size(entry, "Maximum Capacity",
 						      capacity, 1);
 			}
 			if (!(opt.flags & FLAG_QUIET))
-				dmi_memory_array_error_handle(WORD(data + 0x0B));
-			pr_attr("Number Of Devices", "%u",
+				dmi_memory_array_error_handle(entry, WORD(data + 0x0B));
+			pr_attr(entry, "Number Of Devices", "%u",
 				WORD(data + 0x0D));
 			break;
 
@@ -4830,97 +4830,97 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			if (h->length < 0x15) break;
 			if (!(opt.flags & FLAG_QUIET))
 			{
-				pr_attr("Array Handle", "0x%04X",
+				pr_attr(entry, "Array Handle", "0x%04X",
 					WORD(data + 0x04));
-				dmi_memory_array_error_handle(WORD(data + 0x06));
+				dmi_memory_array_error_handle(entry, WORD(data + 0x06));
 			}
-			dmi_memory_device_width("Total Width", WORD(data + 0x08));
-			dmi_memory_device_width("Data Width", WORD(data + 0x0A));
+			dmi_memory_device_width(entry, "Total Width", WORD(data + 0x08));
+			dmi_memory_device_width(entry, "Data Width", WORD(data + 0x0A));
 			if (h->length >= 0x20 && WORD(data + 0x0C) == 0x7FFF)
-				dmi_memory_device_extended_size(DWORD(data + 0x1C));
+				dmi_memory_device_extended_size(entry, DWORD(data + 0x1C));
 			else
-				dmi_memory_device_size(WORD(data + 0x0C));
-			pr_attr("Form Factor", "%s",
+				dmi_memory_device_size(entry, WORD(data + 0x0C));
+			pr_attr(entry, "Form Factor", "%s",
 				dmi_memory_device_form_factor(data[0x0E]));
-			dmi_memory_device_set(data[0x0F]);
-			pr_attr("Locator", "%s",
+			dmi_memory_device_set(entry, data[0x0F]);
+			pr_attr(entry, "Locator", "%s",
 				dmi_string(h, data[0x10]));
-			pr_attr("Bank Locator", "%s",
+			pr_attr(entry, "Bank Locator", "%s",
 				dmi_string(h, data[0x11]));
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_memory_device_type(data[0x12]));
-			dmi_memory_device_type_detail(WORD(data + 0x13));
+			dmi_memory_device_type_detail(entry, WORD(data + 0x13));
 			if (h->length < 0x17) break;
 			/* If no module is present, the remaining fields are irrelevant */
 			if (WORD(data + 0x0C) == 0 && !(opt.flags & FLAG_NO_QUIRKS))
 				break;
-			dmi_memory_device_speed("Speed", WORD(data + 0x15),
+			dmi_memory_device_speed(entry, "Speed", WORD(data + 0x15),
 						h->length >= 0x5C ?
 						DWORD(data + 0x54) : 0);
 			if (h->length < 0x1B) break;
-			pr_attr("Manufacturer", "%s",
+			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x17]));
-			pr_attr("Serial Number", "%s",
+			pr_attr(entry, "Serial Number", "%s",
 				dmi_string(h, data[0x18]));
-			pr_attr("Asset Tag", "%s",
+			pr_attr(entry, "Asset Tag", "%s",
 				dmi_string(h, data[0x19]));
-			pr_attr("Part Number", "%s",
+			pr_attr(entry, "Part Number", "%s",
 				dmi_string(h, data[0x1A]));
 			if (h->length < 0x1C) break;
 			if ((data[0x1B] & 0x0F) == 0)
-				pr_attr("Rank", "Unknown");
+				pr_attr(entry, "Rank", "Unknown");
 			else
-				pr_attr("Rank", "%u", data[0x1B] & 0x0F);
+				pr_attr(entry, "Rank", "%u", data[0x1B] & 0x0F);
 			if (h->length < 0x22) break;
-			dmi_memory_device_speed("Configured Memory Speed",
+			dmi_memory_device_speed(entry, "Configured Memory Speed",
 						WORD(data + 0x20),
 						h->length >= 0x5C ?
 						DWORD(data + 0x58) : 0);
 			if (h->length < 0x28) break;
-			dmi_memory_voltage_value("Minimum Voltage",
+			dmi_memory_voltage_value(entry, "Minimum Voltage",
 						 WORD(data + 0x22));
-			dmi_memory_voltage_value("Maximum Voltage",
+			dmi_memory_voltage_value(entry, "Maximum Voltage",
 						 WORD(data + 0x24));
-			dmi_memory_voltage_value("Configured Voltage",
+			dmi_memory_voltage_value(entry, "Configured Voltage",
 						 WORD(data + 0x26));
 			if (h->length < 0x34) break;
-			dmi_memory_technology(data[0x28]);
-			dmi_memory_operating_mode_capability(WORD(data + 0x29));
-			pr_attr("Firmware Version", "%s",
+			dmi_memory_technology(entry, data[0x28]);
+			dmi_memory_operating_mode_capability(entry, WORD(data + 0x29));
+			pr_attr(entry, "Firmware Version", "%s",
 				dmi_string(h, data[0x2B]));
-			dmi_memory_manufacturer_id("Module Manufacturer ID",
+			dmi_memory_manufacturer_id(entry, "Module Manufacturer ID",
 						   WORD(data + 0x2C));
-			dmi_memory_product_id("Module Product ID",
+			dmi_memory_product_id(entry, "Module Product ID",
 					      WORD(data + 0x2E));
-			dmi_memory_manufacturer_id("Memory Subsystem Controller Manufacturer ID",
+			dmi_memory_manufacturer_id(entry, "Memory Subsystem Controller Manufacturer ID",
 						   WORD(data + 0x30));
-			dmi_memory_product_id("Memory Subsystem Controller Product ID",
+			dmi_memory_product_id(entry, "Memory Subsystem Controller Product ID",
 					      WORD(data + 0x32));
 			if (h->length < 0x3C) break;
-			dmi_memory_size("Non-Volatile Size", QWORD(data + 0x34));
+			dmi_memory_size(entry, "Non-Volatile Size", QWORD(data + 0x34));
 			if (h->length < 0x44) break;
-			dmi_memory_size("Volatile Size", QWORD(data + 0x3C));
+			dmi_memory_size(entry, "Volatile Size", QWORD(data + 0x3C));
 			if (h->length < 0x4C) break;
-			dmi_memory_size("Cache Size", QWORD(data + 0x44));
+			dmi_memory_size(entry, "Cache Size", QWORD(data + 0x44));
 			if (h->length < 0x54) break;
-			dmi_memory_size("Logical Size", QWORD(data + 0x4C));
+			dmi_memory_size(entry, "Logical Size", QWORD(data + 0x4C));
 			break;
 
 		case 18: /* 7.19 32-bit Memory Error Information */
 			pr_handle_name(entry, "32-bit Memory Error Information");
 			if (h->length < 0x17) break;
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_memory_error_type(data[0x04]));
-			pr_attr("Granularity", "%s",
+			pr_attr(entry, "Granularity", "%s",
 				dmi_memory_error_granularity(data[0x05]));
-			pr_attr("Operation", "%s",
+			pr_attr(entry, "Operation", "%s",
 				dmi_memory_error_operation(data[0x06]));
-			dmi_memory_error_syndrome(DWORD(data + 0x07));
-			dmi_32bit_memory_error_address("Memory Array Address",
+			dmi_memory_error_syndrome(entry, DWORD(data + 0x07));
+			dmi_32bit_memory_error_address(entry, "Memory Array Address",
 						       DWORD(data + 0x0B));
-			dmi_32bit_memory_error_address("Device Address",
+			dmi_32bit_memory_error_address(entry, "Device Address",
 						       DWORD(data + 0x0F));
-			dmi_32bit_memory_error_address("Resolution",
+			dmi_32bit_memory_error_address(entry, "Resolution",
 						       DWORD(data + 0x13));
 			break;
 
@@ -4934,26 +4934,26 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 				start = QWORD(data + 0x0F);
 				end = QWORD(data + 0x17);
 
-				pr_attr("Starting Address", "0x%08X%08Xk",
+				pr_attr(entry, "Starting Address", "0x%08X%08Xk",
 					start.h, start.l);
-				pr_attr("Ending Address", "0x%08X%08Xk",
+				pr_attr(entry, "Ending Address", "0x%08X%08Xk",
 					end.h, end.l);
-				dmi_mapped_address_extended_size(start, end);
+				dmi_mapped_address_extended_size(entry, start, end);
 			}
 			else
 			{
-				pr_attr("Starting Address", "0x%08X%03X",
+				pr_attr(entry, "Starting Address", "0x%08X%03X",
 					DWORD(data + 0x04) >> 2,
 					(DWORD(data + 0x04) & 0x3) << 10);
-				pr_attr("Ending Address", "0x%08X%03X",
+				pr_attr(entry, "Ending Address", "0x%08X%03X",
 					DWORD(data + 0x08) >> 2,
 					((DWORD(data + 0x08) & 0x3) << 10) + 0x3FF);
-				dmi_mapped_address_size(DWORD(data + 0x08) - DWORD(data + 0x04) + 1);
+				dmi_mapped_address_size(entry, DWORD(data + 0x08) - DWORD(data + 0x04) + 1);
 			}
 			if (!(opt.flags & FLAG_QUIET))
-				pr_attr("Physical Array Handle", "0x%04X",
+				pr_attr(entry, "Physical Array Handle", "0x%04X",
 					WORD(data + 0x0C));
-			pr_attr("Partition Width", "%u",
+			pr_attr(entry, "Partition Width", "%u",
 				data[0x0E]);
 			break;
 
@@ -4967,288 +4967,288 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 				start = QWORD(data + 0x13);
 				end = QWORD(data + 0x1B);
 
-				pr_attr("Starting Address", "0x%08X%08Xk",
+				pr_attr(entry, "Starting Address", "0x%08X%08Xk",
 					start.h, start.l);
-				pr_attr("Ending Address", "0x%08X%08Xk",
+				pr_attr(entry, "Ending Address", "0x%08X%08Xk",
 					end.h, end.l);
-				dmi_mapped_address_extended_size(start, end);
+				dmi_mapped_address_extended_size(entry, start, end);
 			}
 			else
 			{
-				pr_attr("Starting Address", "0x%08X%03X",
+				pr_attr(entry, "Starting Address", "0x%08X%03X",
 					DWORD(data + 0x04) >> 2,
 					(DWORD(data + 0x04) & 0x3) << 10);
-				pr_attr("Ending Address", "0x%08X%03X",
+				pr_attr(entry, "Ending Address", "0x%08X%03X",
 					DWORD(data + 0x08) >> 2,
 					((DWORD(data + 0x08) & 0x3) << 10) + 0x3FF);
-				dmi_mapped_address_size(DWORD(data + 0x08) - DWORD(data + 0x04) + 1);
+				dmi_mapped_address_size(entry, DWORD(data + 0x08) - DWORD(data + 0x04) + 1);
 			}
 			if (!(opt.flags & FLAG_QUIET))
 			{
-				pr_attr("Physical Device Handle", "0x%04X",
+				pr_attr(entry, "Physical Device Handle", "0x%04X",
 					WORD(data + 0x0C));
-				pr_attr("Memory Array Mapped Address Handle", "0x%04X",
+				pr_attr(entry, "Memory Array Mapped Address Handle", "0x%04X",
 					WORD(data + 0x0E));
 			}
-			dmi_mapped_address_row_position(data[0x10]);
-			dmi_mapped_address_interleave_position(data[0x11]);
-			dmi_mapped_address_interleaved_data_depth(data[0x12]);
+			dmi_mapped_address_row_position(entry, data[0x10]);
+			dmi_mapped_address_interleave_position(entry, data[0x11]);
+			dmi_mapped_address_interleaved_data_depth(entry, data[0x12]);
 			break;
 
 		case 21: /* 7.22 Built-in Pointing Device */
 			pr_handle_name(entry, "Built-in Pointing Device");
 			if (h->length < 0x07) break;
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_pointing_device_type(data[0x04]));
-			pr_attr("Interface", "%s",
+			pr_attr(entry, "Interface", "%s",
 				dmi_pointing_device_interface(data[0x05]));
-			pr_attr("Buttons", "%u",
+			pr_attr(entry, "Buttons", "%u",
 				data[0x06]);
 			break;
 
 		case 22: /* 7.23 Portable Battery */
 			pr_handle_name(entry, "Portable Battery");
 			if (h->length < 0x10) break;
-			pr_attr("Location", "%s",
+			pr_attr(entry, "Location", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Manufacturer", "%s",
+			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x05]));
 			if (data[0x06] || h->length < 0x1A)
-				pr_attr("Manufacture Date", "%s",
+				pr_attr(entry, "Manufacture Date", "%s",
 					dmi_string(h, data[0x06]));
 			if (data[0x07] || h->length < 0x1A)
-				pr_attr("Serial Number", "%s",
+				pr_attr(entry, "Serial Number", "%s",
 					dmi_string(h, data[0x07]));
-			pr_attr("Name", "%s",
+			pr_attr(entry, "Name", "%s",
 				dmi_string(h, data[0x08]));
 			if (data[0x09] != 0x02 || h->length < 0x1A)
-				pr_attr("Chemistry", "%s",
+				pr_attr(entry, "Chemistry", "%s",
 					dmi_battery_chemistry(data[0x09]));
 			if (h->length < 0x16)
-				dmi_battery_capacity(WORD(data + 0x0A), 1);
+				dmi_battery_capacity(entry, WORD(data + 0x0A), 1);
 			else
-				dmi_battery_capacity(WORD(data + 0x0A), data[0x15]);
-			dmi_battery_voltage(WORD(data + 0x0C));
-			pr_attr("SBDS Version", "%s",
+				dmi_battery_capacity(entry, WORD(data + 0x0A), data[0x15]);
+			dmi_battery_voltage(entry,WORD(data + 0x0C));
+			pr_attr(entry, "SBDS Version", "%s",
 				dmi_string(h, data[0x0E]));
-			dmi_battery_maximum_error(data[0x0F]);
+			dmi_battery_maximum_error(entry, data[0x0F]);
 			if (h->length < 0x1A) break;
 			if (data[0x07] == 0)
-				pr_attr("SBDS Serial Number", "%04X",
+				pr_attr(entry, "SBDS Serial Number", "%04X",
 					WORD(data + 0x10));
 			if (data[0x06] == 0)
-				pr_attr("SBDS Manufacture Date", "%u-%02u-%02u",
+				pr_attr(entry, "SBDS Manufacture Date", "%u-%02u-%02u",
 					1980 + (WORD(data + 0x12) >> 9),
 					(WORD(data + 0x12) >> 5) & 0x0F,
 					WORD(data + 0x12) & 0x1F);
 			if (data[0x09] == 0x02)
-				pr_attr("SBDS Chemistry", "%s",
+				pr_attr(entry, "SBDS Chemistry", "%s",
 					dmi_string(h, data[0x14]));
-			pr_attr("OEM-specific Information", "0x%08X",
+			pr_attr(entry, "OEM-specific Information", "0x%08X",
 				DWORD(data + 0x16));
 			break;
 
 		case 23: /* 7.24 System Reset */
 			pr_handle_name(entry, "System Reset");
 			if (h->length < 0x0D) break;
-			pr_attr("Status", "%s",
+			pr_attr(entry, "Status", "%s",
 				data[0x04] & (1 << 0) ? "Enabled" : "Disabled");
-			pr_attr("Watchdog Timer", "%s",
+			pr_attr(entry, "Watchdog Timer", "%s",
 				data[0x04] & (1 << 5) ? "Present" : "Not Present");
 			if (!(data[0x04] & (1 << 5)))
 				break;
-			pr_attr("Boot Option", "%s",
+			pr_attr(entry, "Boot Option", "%s",
 				dmi_system_reset_boot_option((data[0x04] >> 1) & 0x3));
-			pr_attr("Boot Option On Limit", "%s",
+			pr_attr(entry, "Boot Option On Limit", "%s",
 				dmi_system_reset_boot_option((data[0x04] >> 3) & 0x3));
-			dmi_system_reset_count("Reset Count", WORD(data + 0x05));
-			dmi_system_reset_count("Reset Limit", WORD(data + 0x07));
-			dmi_system_reset_timer("Timer Interval", WORD(data + 0x09));
-			dmi_system_reset_timer("Timeout", WORD(data + 0x0B));
+			dmi_system_reset_count(entry, "Reset Count", WORD(data + 0x05));
+			dmi_system_reset_count(entry, "Reset Limit", WORD(data + 0x07));
+			dmi_system_reset_timer(entry, "Timer Interval", WORD(data + 0x09));
+			dmi_system_reset_timer(entry, "Timeout", WORD(data + 0x0B));
 			break;
 
 		case 24: /* 7.25 Hardware Security */
 			pr_handle_name(entry, "Hardware Security");
 			if (h->length < 0x05) break;
-			pr_attr("Power-On Password Status", "%s",
+			pr_attr(entry, "Power-On Password Status", "%s",
 				dmi_hardware_security_status(data[0x04] >> 6));
-			pr_attr("Keyboard Password Status", "%s",
+			pr_attr(entry, "Keyboard Password Status", "%s",
 				dmi_hardware_security_status((data[0x04] >> 4) & 0x3));
-			pr_attr("Administrator Password Status", "%s",
+			pr_attr(entry, "Administrator Password Status", "%s",
 				dmi_hardware_security_status((data[0x04] >> 2) & 0x3));
-			pr_attr("Front Panel Reset Status", "%s",
+			pr_attr(entry, "Front Panel Reset Status", "%s",
 				dmi_hardware_security_status(data[0x04] & 0x3));
 			break;
 
 		case 25: /* 7.26 System Power Controls */
 			pr_handle_name(entry, "System Power Controls");
 			if (h->length < 0x09) break;
-			dmi_power_controls_power_on(data + 0x04);
+			dmi_power_controls_power_on(entry, data + 0x04);
 			break;
 
 		case 26: /* 7.27 Voltage Probe */
 			pr_handle_name(entry, "Voltage Probe");
 			if (h->length < 0x14) break;
-			pr_attr("Description", "%s",
+			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Location", "%s",
+			pr_attr(entry, "Location", "%s",
 				dmi_voltage_probe_location(data[0x05] & 0x1f));
-			pr_attr("Status", "%s",
+			pr_attr(entry, "Status", "%s",
 				dmi_probe_status(data[0x05] >> 5));
-			dmi_voltage_probe_value("Maximum Value", WORD(data + 0x06));
-			dmi_voltage_probe_value("Minimum Value", WORD(data + 0x08));
-			dmi_voltage_probe_resolution(WORD(data + 0x0A));
-			dmi_voltage_probe_value("Tolerance", WORD(data + 0x0C));
-			dmi_probe_accuracy(WORD(data + 0x0E));
-			pr_attr("OEM-specific Information", "0x%08X",
+			dmi_voltage_probe_value(entry, "Maximum Value", WORD(data + 0x06));
+			dmi_voltage_probe_value(entry, "Minimum Value", WORD(data + 0x08));
+			dmi_voltage_probe_resolution(entry, WORD(data + 0x0A));
+			dmi_voltage_probe_value(entry, "Tolerance", WORD(data + 0x0C));
+			dmi_probe_accuracy(entry, WORD(data + 0x0E));
+			pr_attr(entry, "OEM-specific Information", "0x%08X",
 				DWORD(data + 0x10));
 			if (h->length < 0x16) break;
-			dmi_voltage_probe_value("Nominal Value", WORD(data + 0x14));
+			dmi_voltage_probe_value(entry, "Nominal Value", WORD(data + 0x14));
 			break;
 
 		case 27: /* 7.28 Cooling Device */
 			pr_handle_name(entry, "Cooling Device");
 			if (h->length < 0x0C) break;
 			if (!(opt.flags & FLAG_QUIET) && WORD(data + 0x04) != 0xFFFF)
-				pr_attr("Temperature Probe Handle", "0x%04X",
+				pr_attr(entry, "Temperature Probe Handle", "0x%04X",
 					WORD(data + 0x04));
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_cooling_device_type(data[0x06] & 0x1f));
-			pr_attr("Status", "%s",
+			pr_attr(entry, "Status", "%s",
 				dmi_probe_status(data[0x06] >> 5));
 			if (data[0x07] != 0x00)
-				pr_attr("Cooling Unit Group", "%u",
+				pr_attr(entry, "Cooling Unit Group", "%u",
 					data[0x07]);
-			pr_attr("OEM-specific Information", "0x%08X",
+			pr_attr(entry, "OEM-specific Information", "0x%08X",
 				DWORD(data + 0x08));
 			if (h->length < 0x0E) break;
-			dmi_cooling_device_speed(WORD(data + 0x0C));
+			dmi_cooling_device_speed(entry, WORD(data + 0x0C));
 			if (h->length < 0x0F) break;
-			pr_attr("Description", "%s", dmi_string(h, data[0x0E]));
+			pr_attr(entry, "Description", "%s", dmi_string(h, data[0x0E]));
 			break;
 
 		case 28: /* 7.29 Temperature Probe */
 			pr_handle_name(entry, "Temperature Probe");
 			if (h->length < 0x14) break;
-			pr_attr("Description", "%s",
+			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Location", "%s",
+			pr_attr(entry, "Location", "%s",
 				dmi_temperature_probe_location(data[0x05] & 0x1F));
-			pr_attr("Status", "%s",
+			pr_attr(entry, "Status", "%s",
 				dmi_probe_status(data[0x05] >> 5));
-			dmi_temperature_probe_value("Maximum Value",
+			dmi_temperature_probe_value(entry, "Maximum Value",
 						    WORD(data + 0x06));
-			dmi_temperature_probe_value("Minimum Value",
+			dmi_temperature_probe_value(entry, "Minimum Value",
 						    WORD(data + 0x08));
-			dmi_temperature_probe_resolution(WORD(data + 0x0A));
-			dmi_temperature_probe_value("Tolerance",
+			dmi_temperature_probe_resolution(entry, WORD(data + 0x0A));
+			dmi_temperature_probe_value(entry, "Tolerance",
 						    WORD(data + 0x0C));
-			dmi_probe_accuracy(WORD(data + 0x0E));
-			pr_attr("OEM-specific Information", "0x%08X",
+			dmi_probe_accuracy(entry, WORD(data + 0x0E));
+			pr_attr(entry, "OEM-specific Information", "0x%08X",
 				DWORD(data + 0x10));
 			if (h->length < 0x16) break;
-			dmi_temperature_probe_value("Nominal Value",
+			dmi_temperature_probe_value(entry, "Nominal Value",
 						    WORD(data + 0x14));
 			break;
 
 		case 29: /* 7.30 Electrical Current Probe */
 			pr_handle_name(entry, "Electrical Current Probe");
 			if (h->length < 0x14) break;
-			pr_attr("Description", "%s",
+			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Location", "%s",
+			pr_attr(entry, "Location", "%s",
 				dmi_voltage_probe_location(data[5] & 0x1F));
-			pr_attr("Status", "%s",
+			pr_attr(entry, "Status", "%s",
 				dmi_probe_status(data[0x05] >> 5));
-			dmi_current_probe_value("Maximum Value",
+			dmi_current_probe_value(entry, "Maximum Value",
 						WORD(data + 0x06));
-			dmi_current_probe_value("Minimum Value",
+			dmi_current_probe_value(entry, "Minimum Value",
 						WORD(data + 0x08));
-			dmi_current_probe_resolution(WORD(data + 0x0A));
-			dmi_current_probe_value("Tolerance",
+			dmi_current_probe_resolution(entry, WORD(data + 0x0A));
+			dmi_current_probe_value(entry, "Tolerance",
 						WORD(data + 0x0C));
-			dmi_probe_accuracy(WORD(data + 0x0E));
-			pr_attr("OEM-specific Information", "0x%08X",
+			dmi_probe_accuracy(entry, WORD(data + 0x0E));
+			pr_attr(entry, "OEM-specific Information", "0x%08X",
 				DWORD(data + 0x10));
 			if (h->length < 0x16) break;
-			dmi_current_probe_value("Nominal Value",
+			dmi_current_probe_value(entry, "Nominal Value",
 						WORD(data + 0x14));
 			break;
 
 		case 30: /* 7.31 Out-of-band Remote Access */
 			pr_handle_name(entry, "Out-of-band Remote Access");
 			if (h->length < 0x06) break;
-			pr_attr("Manufacturer Name", "%s",
+			pr_attr(entry, "Manufacturer Name", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Inbound Connection", "%s",
+			pr_attr(entry, "Inbound Connection", "%s",
 				data[0x05] & (1 << 0) ? "Enabled" : "Disabled");
-			pr_attr("Outbound Connection", "%s",
+			pr_attr(entry, "Outbound Connection", "%s",
 				data[0x05] & (1 << 1) ? "Enabled" : "Disabled");
 			break;
 
 		case 31: /* 7.32 Boot Integrity Services Entry Point */
 			pr_handle_name(entry, "Boot Integrity Services Entry Point");
 			if (h->length < 0x1C) break;
-			pr_attr("Checksum", "%s",
+			pr_attr(entry, "Checksum", "%s",
 				checksum(data, h->length) ? "OK" : "Invalid");
-			pr_attr("16-bit Entry Point Address", "%04X:%04X",
+			pr_attr(entry, "16-bit Entry Point Address", "%04X:%04X",
 				DWORD(data + 0x08) >> 16,
 				DWORD(data + 0x08) & 0xFFFF);
-			pr_attr("32-bit Entry Point Address", "0x%08X",
+			pr_attr(entry, "32-bit Entry Point Address", "0x%08X",
 				DWORD(data + 0x0C));
 			break;
 
 		case 32: /* 7.33 System Boot Information */
 			pr_handle_name(entry, "System Boot Information");
 			if (h->length < 0x0B) break;
-			pr_attr("Status", "%s",
+			pr_attr(entry, "Status", "%s",
 				dmi_system_boot_status(data[0x0A]));
 			break;
 
 		case 33: /* 7.34 64-bit Memory Error Information */
 			pr_handle_name(entry, "64-bit Memory Error Information");
 			if (h->length < 0x1F) break;
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_memory_error_type(data[0x04]));
-			pr_attr("Granularity", "%s",
+			pr_attr(entry, "Granularity", "%s",
 				dmi_memory_error_granularity(data[0x05]));
-			pr_attr("Operation", "%s",
+			pr_attr(entry, "Operation", "%s",
 				dmi_memory_error_operation(data[0x06]));
-			dmi_memory_error_syndrome(DWORD(data + 0x07));
-			dmi_64bit_memory_error_address("Memory Array Address",
+			dmi_memory_error_syndrome(entry, DWORD(data + 0x07));
+			dmi_64bit_memory_error_address(entry, "Memory Array Address",
 						       QWORD(data + 0x0B));
-			dmi_64bit_memory_error_address("Device Address",
+			dmi_64bit_memory_error_address(entry, "Device Address",
 						       QWORD(data + 0x13));
-			dmi_32bit_memory_error_address("Resolution",
+			dmi_32bit_memory_error_address(entry, "Resolution",
 						       DWORD(data + 0x1B));
 			break;
 
 		case 34: /* 7.35 Management Device */
 			pr_handle_name(entry, "Management Device");
 			if (h->length < 0x0B) break;
-			pr_attr("Description", "%s",
+			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_management_device_type(data[0x05]));
-			pr_attr("Address", "0x%08X",
+			pr_attr(entry, "Address", "0x%08X",
 				DWORD(data + 0x06));
-			pr_attr("Address Type", "%s",
+			pr_attr(entry, "Address Type", "%s",
 				dmi_management_device_address_type(data[0x0A]));
 			break;
 
 		case 35: /* 7.36 Management Device Component */
 			pr_handle_name(entry, "Management Device Component");
 			if (h->length < 0x0B) break;
-			pr_attr("Description", "%s",
+			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
 			if (!(opt.flags & FLAG_QUIET))
 			{
-				pr_attr("Management Device Handle", "0x%04X",
+				pr_attr(entry, "Management Device Handle", "0x%04X",
 					WORD(data + 0x05));
-				pr_attr("Component Handle", "0x%04X",
+				pr_attr(entry, "Component Handle", "0x%04X",
 					WORD(data + 0x07));
 				if (WORD(data + 0x09) != 0xFFFF)
-					pr_attr("Threshold Handle", "0x%04X",
+					pr_attr(entry, "Threshold Handle", "0x%04X",
 						WORD(data + 0x09));
 			}
 			break;
@@ -5257,36 +5257,36 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			pr_handle_name(entry, "Management Device Threshold Data");
 			if (h->length < 0x10) break;
 			if (WORD(data + 0x04) != 0x8000)
-				pr_attr("Lower Non-critical Threshold", "%d",
+				pr_attr(entry, "Lower Non-critical Threshold", "%d",
 					(i16)WORD(data + 0x04));
 			if (WORD(data + 0x06) != 0x8000)
-				pr_attr("Upper Non-critical Threshold", "%d",
+				pr_attr(entry, "Upper Non-critical Threshold", "%d",
 					(i16)WORD(data + 0x06));
 			if (WORD(data + 0x08) != 0x8000)
-				pr_attr("Lower Critical Threshold", "%d",
+				pr_attr(entry, "Lower Critical Threshold", "%d",
 					(i16)WORD(data + 0x08));
 			if (WORD(data + 0x0A) != 0x8000)
-				pr_attr("Upper Critical Threshold", "%d",
+				pr_attr(entry, "Upper Critical Threshold", "%d",
 					(i16)WORD(data + 0x0A));
 			if (WORD(data + 0x0C) != 0x8000)
-				pr_attr("Lower Non-recoverable Threshold", "%d",
+				pr_attr(entry, "Lower Non-recoverable Threshold", "%d",
 					(i16)WORD(data + 0x0C));
 			if (WORD(data + 0x0E) != 0x8000)
-				pr_attr("Upper Non-recoverable Threshold", "%d",
+				pr_attr(entry, "Upper Non-recoverable Threshold", "%d",
 					(i16)WORD(data + 0x0E));
 			break;
 
 		case 37: /* 7.38 Memory Channel */
 			pr_handle_name(entry, "Memory Channel");
 			if (h->length < 0x07) break;
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Type", "%s",
 				dmi_memory_channel_type(data[0x04]));
-			pr_attr("Maximal Load", "%u",
+			pr_attr(entry, "Maximal Load", "%u",
 				data[0x05]);
-			pr_attr("Devices", "%u",
+			pr_attr(entry, "Devices", "%u",
 				data[0x06]);
 			if (h->length < 0x07 + 3 * data[0x06]) break;
-			dmi_memory_channel_devices(data[0x06], data + 0x07);
+			dmi_memory_channel_devices(entry, data[0x06], data + 0x07);
 			break;
 
 		case 38: /* 7.39 IPMI Device Information */
@@ -5296,35 +5296,35 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			 */
 			pr_handle_name(entry, "IPMI Device Information");
 			if (h->length < 0x10) break;
-			pr_attr("Interface Type", "%s",
+			pr_attr(entry, "Interface Type", "%s",
 				dmi_ipmi_interface_type(data[0x04]));
-			pr_attr("Specification Version", "%u.%u",
+			pr_attr(entry, "Specification Version", "%u.%u",
 				data[0x05] >> 4, data[0x05] & 0x0F);
-			pr_attr("I2C Slave Address", "0x%02x",
+			pr_attr(entry, "I2C Slave Address", "0x%02x",
 				data[0x06] >> 1);
 			if (data[0x07] != 0xFF)
-				pr_attr("NV Storage Device Address", "%u",
+				pr_attr(entry, "NV Storage Device Address", "%u",
 					data[0x07]);
 			else
-				pr_attr("NV Storage Device", "Not Present");
-			dmi_ipmi_base_address(data[0x04], data + 0x08,
+				pr_attr(entry, "NV Storage Device", "Not Present");
+			dmi_ipmi_base_address(entry, data[0x04], data + 0x08,
 				h->length < 0x11 ? 0 : (data[0x10] >> 4) & 1);
 			if (h->length < 0x12) break;
 			if (data[0x04] != 0x04)
 			{
-				pr_attr("Register Spacing", "%s",
+				pr_attr(entry, "Register Spacing", "%s",
 					dmi_ipmi_register_spacing(data[0x10] >> 6));
 				if (data[0x10] & (1 << 3))
 				{
-					pr_attr("Interrupt Polarity", "%s",
+					pr_attr(entry, "Interrupt Polarity", "%s",
 						data[0x10] & (1 << 1) ? "Active High" : "Active Low");
-					pr_attr("Interrupt Trigger Mode", "%s",
+					pr_attr(entry, "Interrupt Trigger Mode", "%s",
 						data[0x10] & (1 << 0) ? "Level" : "Edge");
 				}
 			}
 			if (data[0x11] != 0x00)
 			{
-				pr_attr("Interrupt Number", "%u",
+				pr_attr(entry, "Interrupt Number", "%u",
 					data[0x11]);
 			}
 			break;
@@ -5333,47 +5333,47 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			pr_handle_name(entry, "System Power Supply");
 			if (h->length < 0x10) break;
 			if (data[0x04] != 0x00)
-				pr_attr("Power Unit Group", "%u",
+				pr_attr(entry, "Power Unit Group", "%u",
 					data[0x04]);
-			pr_attr("Location", "%s",
+			pr_attr(entry, "Location", "%s",
 				dmi_string(h, data[0x05]));
-			pr_attr("Name", "%s",
+			pr_attr(entry, "Name", "%s",
 				dmi_string(h, data[0x06]));
-			pr_attr("Manufacturer", "%s",
+			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x07]));
-			pr_attr("Serial Number", "%s",
+			pr_attr(entry, "Serial Number", "%s",
 				dmi_string(h, data[0x08]));
-			pr_attr("Asset Tag", "%s",
+			pr_attr(entry, "Asset Tag", "%s",
 				dmi_string(h, data[0x09]));
-			pr_attr("Model Part Number", "%s",
+			pr_attr(entry, "Model Part Number", "%s",
 				dmi_string(h, data[0x0A]));
-			pr_attr("Revision", "%s",
+			pr_attr(entry, "Revision", "%s",
 				dmi_string(h, data[0x0B]));
-			dmi_power_supply_power(WORD(data + 0x0C));
+			dmi_power_supply_power(entry, WORD(data + 0x0C));
 			if (WORD(data + 0x0E) & (1 << 1))
-				pr_attr("Status", "Present, %s",
+				pr_attr(entry, "Status", "Present, %s",
 					dmi_power_supply_status((WORD(data + 0x0E) >> 7) & 0x07));
 			else
-				pr_attr("Status", "Not Present");
-			pr_attr("Type", "%s",
+				pr_attr(entry, "Status", "Not Present");
+			pr_attr(entry, "Type", "%s",
 				dmi_power_supply_type((WORD(data + 0x0E) >> 10) & 0x0F));
-			pr_attr("Input Voltage Range Switching", "%s",
+			pr_attr(entry, "Input Voltage Range Switching", "%s",
 				dmi_power_supply_range_switching((WORD(data + 0x0E) >> 3) & 0x0F));
-			pr_attr("Plugged", "%s",
+			pr_attr(entry, "Plugged", "%s",
 				WORD(data + 0x0E) & (1 << 2) ? "No" : "Yes");
-			pr_attr("Hot Replaceable", "%s",
+			pr_attr(entry, "Hot Replaceable", "%s",
 				WORD(data + 0x0E) & (1 << 0) ? "Yes" : "No");
 			if (h->length < 0x16) break;
 			if (!(opt.flags & FLAG_QUIET))
 			{
 				if (WORD(data + 0x10) != 0xFFFF)
-					pr_attr("Input Voltage Probe Handle", "0x%04X",
+					pr_attr(entry, "Input Voltage Probe Handle", "0x%04X",
 						WORD(data + 0x10));
 				if (WORD(data + 0x12) != 0xFFFF)
-					pr_attr("Cooling Device Handle", "0x%04X",
+					pr_attr(entry, "Cooling Device Handle", "0x%04X",
 						WORD(data + 0x12));
 				if (WORD(data + 0x14) != 0xFFFF)
-					pr_attr("Input Current Probe Handle", "0x%04X",
+					pr_attr(entry, "Input Current Probe Handle", "0x%04X",
 						WORD(data + 0x14));
 			}
 			break;
@@ -5388,13 +5388,13 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 		case 41: /* 7.42 Onboard Device Extended Information */
 			pr_handle_name(entry, "Onboard Device");
 			if (h->length < 0x0B) break;
-			pr_attr("Reference Designation", "%s", dmi_string(h, data[0x04]));
-			pr_attr("Type", "%s",
+			pr_attr(entry, "Reference Designation", "%s", dmi_string(h, data[0x04]));
+			pr_attr(entry, "Type", "%s",
 				dmi_on_board_devices_type(data[0x05] & 0x7F));
-			pr_attr("Status", "%s",
+			pr_attr(entry, "Status", "%s",
 				data[0x05] & 0x80 ? "Enabled" : "Disabled");
-			pr_attr("Type Instance", "%u", data[0x06]);
-			dmi_slot_segment_bus_func(WORD(data + 0x07), data[0x09], data[0x0A]);
+			pr_attr(entry, "Type Instance", "%u", data[0x06]);
+			dmi_slot_segment_bus_func(entry, WORD(data + 0x07), data[0x09], data[0x0A]);
 			break;
 
 		case 42: /* 7.43 Management Controller Host Interface */
@@ -5402,7 +5402,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			if (ver < 0x0302)
 			{
 				if (h->length < 0x05) break;
-				pr_attr("Interface Type", "%s",
+				pr_attr(entry, "Interface Type", "%s",
 					dmi_management_controller_host_type(data[0x04]));
 				/*
 				 * There you have a type-dependent, variable-length
@@ -5413,20 +5413,20 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 				if (h->length < 0x09) break;
 				if (data[0x04] == 0xF0)		/* OEM */
 				{
-					pr_attr("Vendor ID", "0x%02X%02X%02X%02X",
+					pr_attr(entry, "Vendor ID", "0x%02X%02X%02X%02X",
 						data[0x05], data[0x06], data[0x07],
 						data[0x08]);
 				}
 			}
 			else
-				dmi_parse_controller_structure(h);
+				dmi_parse_controller_structure(entry, h);
 			break;
 
 		case 43: /* 7.44 TPM Device */
 			pr_handle_name(entry, "TPM Device");
 			if (h->length < 0x1B) break;
-			dmi_tpm_vendor_id(data + 0x04);
-			pr_attr("Specification Version", "%d.%d", data[0x08], data[0x09]);
+			dmi_tpm_vendor_id(entry,data + 0x04);
+			pr_attr(entry, "Specification Version", "%d.%d", data[0x08], data[0x09]);
 			switch (data[0x08])
 			{
 				case 0x01:
@@ -5435,11 +5435,11 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 					 * redundant with the above, and uncoded
 					 * in a silly way.
 					 */
-					pr_attr("Firmware Revision", "%u.%u",
+					pr_attr(entry, "Firmware Revision", "%u.%u",
 						data[0x0C], data[0x0D]);
 					break;
 				case 0x02:
-					pr_attr("Firmware Revision", "%u.%u",
+					pr_attr(entry, "Firmware Revision", "%u.%u",
 						DWORD(data + 0x0A) >> 16,
 						DWORD(data + 0x0A) & 0xFFFF);
 					/*
@@ -5449,32 +5449,32 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 					 */
 					break;
 			}
-			pr_attr("Description", "%s", dmi_string(h, data[0x12]));
+			pr_attr(entry, "Description", "%s", dmi_string(h, data[0x12]));
 			pr_list_start("Characteristics", NULL);
 			dmi_tpm_characteristics(QWORD(data + 0x13));
 			pr_list_end();
 			if (h->length < 0x1F) break;
-			pr_attr("OEM-specific Information", "0x%08X",
+			pr_attr(entry, "OEM-specific Information", "0x%08X",
 				DWORD(data + 0x1B));
 			break;
 
 		case 45: /* 7.46 Firmware Inventory Information */
 			pr_handle_name(entry, "Firmware Inventory Information");
 			if (h->length < 0x18) break;
-			pr_attr("Firmware Component Name", "%s",
+			pr_attr(entry, "Firmware Component Name", "%s",
 				dmi_string(h, data[0x04]));
-			pr_attr("Firmware Version", "%s",
+			pr_attr(entry, "Firmware Version", "%s",
 				dmi_string(h, data[0x05]));
-			pr_attr("Firmware ID", "%s", dmi_string(h, data[0x07]));
-			pr_attr("Release Date", "%s", dmi_string(h, data[0x09]));
-			pr_attr("Manufacturer", "%s", dmi_string(h, data[0x0A]));
-			pr_attr("Lowest Supported Firmware Version", "%s",
+			pr_attr(entry, "Firmware ID", "%s", dmi_string(h, data[0x07]));
+			pr_attr(entry, "Release Date", "%s", dmi_string(h, data[0x09]));
+			pr_attr(entry, "Manufacturer", "%s", dmi_string(h, data[0x0A]));
+			pr_attr(entry, "Lowest Supported Firmware Version", "%s",
 				dmi_string(h, data[0x0B]));
-			dmi_memory_size("Image Size", QWORD(data + 0x0C));
+			dmi_memory_size(entry, "Image Size", QWORD(data + 0x0C));
 			pr_list_start("Characteristics", NULL);
 			dmi_firmware_characteristics(WORD(data + 0x14));
 			pr_list_end();
-			pr_attr("State", "%s", dmi_firmware_state(data[0x16]));
+			pr_attr(entry, "State", "%s", dmi_firmware_state(data[0x16]));
 			if (h->length < 0x18 + data[0x17] * 2) break;
 			if (!(opt.flags & FLAG_QUIET))
 				dmi_firmware_components(data[0x17], data + 0x18);
@@ -5545,7 +5545,7 @@ static void dmi_table_string(const struct dmi_header *h, const u8 *data, u16 ver
 				pr_printf("%u.%u\n", data[offset - 1], data[offset]);
 			break;
 		case 0x108:
-			dmi_system_uuid(NULL, NULL, data + offset, ver);
+			dmi_system_uuid(NULL, NULL, NULL, data + offset, ver);
 			break;
 		case 0x305:
 			pr_printf("%s\n", dmi_chassis_type(data[offset]));
@@ -5554,7 +5554,7 @@ static void dmi_table_string(const struct dmi_header *h, const u8 *data, u16 ver
 			pr_printf("%s\n", dmi_processor_family(h, ver));
 			break;
 		case 0x416:
-			dmi_processor_frequency(NULL, data + offset);
+			dmi_processor_frequency(NULL, NULL, data + offset);
 			break;
 		default:
 			pr_printf("%s\n", dmi_string(h, data[offset]));
