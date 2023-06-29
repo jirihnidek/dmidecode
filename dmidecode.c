@@ -2409,7 +2409,7 @@ static const char *dmi_on_board_devices_type(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_on_board_devices(const struct dmi_header *h)
+static void dmi_on_board_devices(json_object *entry, const struct dmi_header *h)
 {
 	u8 *p = h->data + 4;
 	u8 count = (h->length - 0x04) / 2;
@@ -2418,9 +2418,9 @@ static void dmi_on_board_devices(const struct dmi_header *h)
 	for (i = 0; i < count; i++)
 	{
 		if (count == 1)
-			pr_handle_name(NULL, "On Board Device Information");
+			pr_handle_name(entry, "On Board Device Information");
 		else
-			pr_handle_name(NULL, "On Board Device %d Information",
+			pr_handle_name(entry, "On Board Device %d Information",
 				       i + 1);
 		pr_attr("Type", "%s",
 			dmi_on_board_devices_type(p[2 * i] & 0x7F));
@@ -3760,7 +3760,7 @@ static const char *dmi_power_supply_range_switching(u8 code)
  * whether it's worth the effort.
  */
 
-static void dmi_additional_info(const struct dmi_header *h)
+static void dmi_additional_info(json_object *entry, const struct dmi_header *h)
 {
 	u8 *p = h->data + 4;
 	u8 count = *p++;
@@ -3769,7 +3769,7 @@ static void dmi_additional_info(const struct dmi_header *h)
 
 	for (i = 0; i < count; i++)
 	{
-		pr_handle_name(NULL, "Additional Information %d", i + 1);
+		pr_handle_name(entry, "Additional Information %d", i + 1);
 
 		/* Check for short entries */
 		if (h->length < offset + 1) break;
@@ -4724,7 +4724,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 10: /* 7.11 On Board Devices Information */
-			dmi_on_board_devices(h);
+			dmi_on_board_devices(entry, h);
 			break;
 
 		case 11: /* 7.12 OEM Strings */
@@ -5382,7 +5382,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			if (h->length < 0x0B) break;
 			if (opt.flags & FLAG_QUIET)
 				return entry;
-			dmi_additional_info(h);
+			dmi_additional_info(entry, h);
 			break;
 
 		case 41: /* 7.42 Onboard Device Extended Information */
