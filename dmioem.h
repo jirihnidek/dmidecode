@@ -19,7 +19,8 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#include <json-c/json.h>
 struct dmi_header;
 
 void dmi_set_vendor(const char *s, const char *p);
-int dmi_decode_oem(const struct dmi_header *h);
+int dmi_decode_oem(json_object *entry, const struct dmi_header *h);

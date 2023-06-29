@@ -4404,7 +4404,6 @@ static void dmi_firmware_components(u8 count, const u8 *p)
 static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 {
 	const u8 *data = h->data;
-    json_object *str_obj = NULL;
     json_object *entry = NULL;
 
     if (opt.flags & FLAG_JSON) {
@@ -5491,7 +5490,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		default:
-			if (dmi_decode_oem(h))
+			if (dmi_decode_oem(entry, h))
 				break;
 			if (opt.flags & FLAG_QUIET)
 				return entry;
