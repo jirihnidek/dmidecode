@@ -81,7 +81,7 @@ json_object *pr_handle(const struct dmi_header *h)
     return NULL;
 }
 
-void pr_handle_name(json_object *entry, const char *format, ...)
+void pr_handle_name(json_object *item, const char *format, ...)
 {
 	va_list args;
 	if (output_format == TEXT_FORMAT) {
@@ -90,14 +90,14 @@ void pr_handle_name(json_object *entry, const char *format, ...)
 		va_end(args);
 		printf("\n");
 	}
-    if (output_format == JSON_FORMAT && entry != NULL) {
+    if (output_format == JSON_FORMAT && item != NULL) {
 		char *str;
 		int ret;
 		va_start(args, format);
 		ret = vasprintf(&str, format, args);
 		va_end(args);
 		if (ret != -1) {
-			json_object_object_add(entry, "name", json_object_new_string(str));
+			json_object_object_add(item, "description", json_object_new_string(str));
 			free(str);
 		}
     }
@@ -136,6 +136,9 @@ void pr_subattr(json_object *entry, const char *name, const char *format, ...)
 		va_end(args);
 		printf("\n");
 	}
+    // Note: sub attribute is saved to JSON in the same way as normal
+    // attribute, because it does not make any sense to change indentation
+    // for this output format
 	if (output_format == JSON_FORMAT && entry != NULL) {
 		char *str;
 		int ret;

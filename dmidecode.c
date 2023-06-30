@@ -2409,7 +2409,7 @@ static const char *dmi_on_board_devices_type(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_on_board_devices(json_object *entry, const struct dmi_header *h)
+static void dmi_on_board_devices(json_object *item, json_object *entry, const struct dmi_header *h)
 {
 	u8 *p = h->data + 4;
 	u8 count = (h->length - 0x04) / 2;
@@ -2418,9 +2418,9 @@ static void dmi_on_board_devices(json_object *entry, const struct dmi_header *h)
 	for (i = 0; i < count; i++)
 	{
 		if (count == 1)
-			pr_handle_name(entry, "On Board Device Information");
+			pr_handle_name(item, "On Board Device Information");
 		else
-			pr_handle_name(entry, "On Board Device %d Information",
+			pr_handle_name(item, "On Board Device %d Information",
 				       i + 1);
 		pr_attr(entry, "Type", "%s",
 			dmi_on_board_devices_type(p[2 * i] & 0x7F));
@@ -3760,7 +3760,7 @@ static const char *dmi_power_supply_range_switching(u8 code)
  * whether it's worth the effort.
  */
 
-static void dmi_additional_info(json_object *entry, const struct dmi_header *h)
+static void dmi_additional_info(json_object *item, json_object *entry, const struct dmi_header *h)
 {
 	u8 *p = h->data + 4;
 	u8 count = *p++;
@@ -3769,7 +3769,7 @@ static void dmi_additional_info(json_object *entry, const struct dmi_header *h)
 
 	for (i = 0; i < count; i++)
 	{
-		pr_handle_name(entry, "Additional Information %d", i + 1);
+		pr_handle_name(item, "Additional Information %d", i + 1);
 
 		/* Check for short entries */
 		if (h->length < offset + 1) break;
@@ -4401,7 +4401,7 @@ static void dmi_firmware_components(u8 count, const u8 *p)
  * Main
  */
 
-static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
+static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u16 ver)
 {
 	const u8 *data = h->data;
     json_object *entry = NULL;
@@ -4416,7 +4416,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 	switch (h->type)
 	{
 		case 0: /* 7.1 BIOS Information */
-			pr_handle_name(entry, "BIOS Information");
+			pr_handle_name(item, "BIOS Information");
 			if (h->length < 0x12) break;
 			pr_attr(entry, "Vendor", "%s",
 				dmi_string(h, data[0x04]));
@@ -4453,7 +4453,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 1: /* 7.2 System Information */
-			pr_handle_name(entry, "System Information");
+			pr_handle_name(item, "System Information");
 			if (h->length < 0x08) break;
 			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x04]));
@@ -4475,7 +4475,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 2: /* 7.3 Base Board Information */
-			pr_handle_name(entry, "Base Board Information");
+			pr_handle_name(item, "Base Board Information");
 			if (h->length < 0x08) break;
 			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x04]));
@@ -4505,7 +4505,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 3: /* 7.4 Chassis Information */
-			pr_handle_name(entry, "Chassis Information");
+			pr_handle_name(item, "Chassis Information");
 			if (h->length < 0x09) break;
 			pr_attr(entry, "Manufacturer", "%s",
 				dmi_string(h, data[0x04]));
@@ -4543,7 +4543,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 4: /* 7.5 Processor Information */
-			pr_handle_name(entry, "Processor Information");
+			pr_handle_name(item, "Processor Information");
 			if (h->length < 0x1A) break;
 			pr_attr(entry, "Socket Designation", "%s",
 				dmi_string(h, data[0x04]));
@@ -4605,7 +4605,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 5: /* 7.6 Memory Controller Information */
-			pr_handle_name(entry, "Memory Controller Information");
+			pr_handle_name(item, "Memory Controller Information");
 			if (h->length < 0x0F) break;
 			pr_attr(entry, "Error Detecting Method", "%s",
 				dmi_memory_controller_ed_method(data[0x04]));
@@ -4632,7 +4632,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 6: /* 7.7 Memory Module Information */
-			pr_handle_name(entry, "Memory Module Information");
+			pr_handle_name(item, "Memory Module Information");
 			if (h->length < 0x0C) break;
 			pr_attr(entry, "Socket Designation", "%s",
 				dmi_string(h, data[0x04]));
@@ -4645,7 +4645,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 7: /* 7.8 Cache Information */
-			pr_handle_name(entry, "Cache Information");
+			pr_handle_name(item, "Cache Information");
 			if (h->length < 0x0F) break;
 			pr_attr(entry, "Socket Designation", "%s",
 				dmi_string(h, data[0x04]));
@@ -4678,7 +4678,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 8: /* 7.9 Port Connector Information */
-			pr_handle_name(entry, "Port Connector Information");
+			pr_handle_name(item, "Port Connector Information");
 			if (h->length < 0x09) break;
 			pr_attr(entry, "Internal Reference Designator", "%s",
 				dmi_string(h, data[0x04]));
@@ -4693,7 +4693,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 9: /* 7.10 System Slots */
-			pr_handle_name(entry, "System Slot Information");
+			pr_handle_name(item, "System Slot Information");
 			if (h->length < 0x0C) break;
 			pr_attr(entry, "Designation", "%s",
 				dmi_string(h, data[0x04]));
@@ -4724,23 +4724,23 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 10: /* 7.11 On Board Devices Information */
-			dmi_on_board_devices(entry, h);
+			dmi_on_board_devices(item, entry, h);
 			break;
 
 		case 11: /* 7.12 OEM Strings */
-			pr_handle_name(entry, "OEM Strings");
+			pr_handle_name(item, "OEM Strings");
 			if (h->length < 0x05) break;
 			dmi_oem_strings(entry, h);
 			break;
 
 		case 12: /* 7.13 System Configuration Options */
-			pr_handle_name(entry, "System Configuration Options");
+			pr_handle_name(item, "System Configuration Options");
 			if (h->length < 0x05) break;
 			dmi_system_configuration_options(entry, h);
 			break;
 
 		case 13: /* 7.14 BIOS Language Information */
-			pr_handle_name(entry, "BIOS Language Information");
+			pr_handle_name(item, "BIOS Language Information");
 			if (h->length < 0x16) break;
 			if (ver >= 0x0201)
 			{
@@ -4755,7 +4755,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 14: /* 7.15 Group Associations */
-			pr_handle_name(entry, "Group Associations");
+			pr_handle_name(item, "Group Associations");
 			if (h->length < 0x05) break;
 			pr_attr(entry, "Name", "%s",
 				dmi_string(h, data[0x04]));
@@ -4766,7 +4766,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 15: /* 7.16 System Event Log */
-			pr_handle_name(entry, "System Event Log");
+			pr_handle_name(item, "System Event Log");
 			if (h->length < 0x14) break;
 			pr_attr(entry, "Area Length", "%u bytes",
 				WORD(data + 0x04));
@@ -4794,7 +4794,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 16: /* 7.17 Physical Memory Array */
-			pr_handle_name(entry, "Physical Memory Array");
+			pr_handle_name(item, "Physical Memory Array");
 			if (h->length < 0x0F) break;
 			pr_attr(entry, "Location", "%s",
 				dmi_memory_array_location(data[0x04]));
@@ -4826,7 +4826,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 17: /* 7.18 Memory Device */
-			pr_handle_name(entry, "Memory Device");
+			pr_handle_name(item, "Memory Device");
 			if (h->length < 0x15) break;
 			if (!(opt.flags & FLAG_QUIET))
 			{
@@ -4907,7 +4907,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 18: /* 7.19 32-bit Memory Error Information */
-			pr_handle_name(entry, "32-bit Memory Error Information");
+			pr_handle_name(item, "32-bit Memory Error Information");
 			if (h->length < 0x17) break;
 			pr_attr(entry, "Type", "%s",
 				dmi_memory_error_type(data[0x04]));
@@ -4925,7 +4925,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 19: /* 7.20 Memory Array Mapped Address */
-			pr_handle_name(entry, "Memory Array Mapped Address");
+			pr_handle_name(item, "Memory Array Mapped Address");
 			if (h->length < 0x0F) break;
 			if (h->length >= 0x1F && DWORD(data + 0x04) == 0xFFFFFFFF)
 			{
@@ -4958,7 +4958,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 20: /* 7.21 Memory Device Mapped Address */
-			pr_handle_name(entry, "Memory Device Mapped Address");
+			pr_handle_name(item, "Memory Device Mapped Address");
 			if (h->length < 0x13) break;
 			if (h->length >= 0x23 && DWORD(data + 0x04) == 0xFFFFFFFF)
 			{
@@ -4996,7 +4996,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 21: /* 7.22 Built-in Pointing Device */
-			pr_handle_name(entry, "Built-in Pointing Device");
+			pr_handle_name(item, "Built-in Pointing Device");
 			if (h->length < 0x07) break;
 			pr_attr(entry, "Type", "%s",
 				dmi_pointing_device_type(data[0x04]));
@@ -5007,7 +5007,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 22: /* 7.23 Portable Battery */
-			pr_handle_name(entry, "Portable Battery");
+			pr_handle_name(item, "Portable Battery");
 			if (h->length < 0x10) break;
 			pr_attr(entry, "Location", "%s",
 				dmi_string(h, data[0x04]));
@@ -5049,7 +5049,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 23: /* 7.24 System Reset */
-			pr_handle_name(entry, "System Reset");
+			pr_handle_name(item, "System Reset");
 			if (h->length < 0x0D) break;
 			pr_attr(entry, "Status", "%s",
 				data[0x04] & (1 << 0) ? "Enabled" : "Disabled");
@@ -5068,7 +5068,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 24: /* 7.25 Hardware Security */
-			pr_handle_name(entry, "Hardware Security");
+			pr_handle_name(item, "Hardware Security");
 			if (h->length < 0x05) break;
 			pr_attr(entry, "Power-On Password Status", "%s",
 				dmi_hardware_security_status(data[0x04] >> 6));
@@ -5081,13 +5081,13 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 25: /* 7.26 System Power Controls */
-			pr_handle_name(entry, "System Power Controls");
+			pr_handle_name(item, "System Power Controls");
 			if (h->length < 0x09) break;
 			dmi_power_controls_power_on(entry, data + 0x04);
 			break;
 
 		case 26: /* 7.27 Voltage Probe */
-			pr_handle_name(entry, "Voltage Probe");
+			pr_handle_name(item, "Voltage Probe");
 			if (h->length < 0x14) break;
 			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
@@ -5107,7 +5107,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 27: /* 7.28 Cooling Device */
-			pr_handle_name(entry, "Cooling Device");
+			pr_handle_name(item, "Cooling Device");
 			if (h->length < 0x0C) break;
 			if (!(opt.flags & FLAG_QUIET) && WORD(data + 0x04) != 0xFFFF)
 				pr_attr(entry, "Temperature Probe Handle", "0x%04X",
@@ -5128,7 +5128,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 28: /* 7.29 Temperature Probe */
-			pr_handle_name(entry, "Temperature Probe");
+			pr_handle_name(item, "Temperature Probe");
 			if (h->length < 0x14) break;
 			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
@@ -5152,7 +5152,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 29: /* 7.30 Electrical Current Probe */
-			pr_handle_name(entry, "Electrical Current Probe");
+			pr_handle_name(item, "Electrical Current Probe");
 			if (h->length < 0x14) break;
 			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
@@ -5176,7 +5176,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 30: /* 7.31 Out-of-band Remote Access */
-			pr_handle_name(entry, "Out-of-band Remote Access");
+			pr_handle_name(item, "Out-of-band Remote Access");
 			if (h->length < 0x06) break;
 			pr_attr(entry, "Manufacturer Name", "%s",
 				dmi_string(h, data[0x04]));
@@ -5187,7 +5187,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 31: /* 7.32 Boot Integrity Services Entry Point */
-			pr_handle_name(entry, "Boot Integrity Services Entry Point");
+			pr_handle_name(item, "Boot Integrity Services Entry Point");
 			if (h->length < 0x1C) break;
 			pr_attr(entry, "Checksum", "%s",
 				checksum(data, h->length) ? "OK" : "Invalid");
@@ -5199,14 +5199,14 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 32: /* 7.33 System Boot Information */
-			pr_handle_name(entry, "System Boot Information");
+			pr_handle_name(item, "System Boot Information");
 			if (h->length < 0x0B) break;
 			pr_attr(entry, "Status", "%s",
 				dmi_system_boot_status(data[0x0A]));
 			break;
 
 		case 33: /* 7.34 64-bit Memory Error Information */
-			pr_handle_name(entry, "64-bit Memory Error Information");
+			pr_handle_name(item, "64-bit Memory Error Information");
 			if (h->length < 0x1F) break;
 			pr_attr(entry, "Type", "%s",
 				dmi_memory_error_type(data[0x04]));
@@ -5224,7 +5224,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 34: /* 7.35 Management Device */
-			pr_handle_name(entry, "Management Device");
+			pr_handle_name(item, "Management Device");
 			if (h->length < 0x0B) break;
 			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
@@ -5237,7 +5237,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 35: /* 7.36 Management Device Component */
-			pr_handle_name(entry, "Management Device Component");
+			pr_handle_name(item, "Management Device Component");
 			if (h->length < 0x0B) break;
 			pr_attr(entry, "Description", "%s",
 				dmi_string(h, data[0x04]));
@@ -5254,7 +5254,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 36: /* 7.37 Management Device Threshold Data */
-			pr_handle_name(entry, "Management Device Threshold Data");
+			pr_handle_name(item, "Management Device Threshold Data");
 			if (h->length < 0x10) break;
 			if (WORD(data + 0x04) != 0x8000)
 				pr_attr(entry, "Lower Non-critical Threshold", "%d",
@@ -5277,7 +5277,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 37: /* 7.38 Memory Channel */
-			pr_handle_name(entry, "Memory Channel");
+			pr_handle_name(item, "Memory Channel");
 			if (h->length < 0x07) break;
 			pr_attr(entry, "Type", "%s",
 				dmi_memory_channel_type(data[0x04]));
@@ -5294,7 +5294,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			 * We use the word "Version" instead of "Revision", conforming to
 			 * the IPMI specification.
 			 */
-			pr_handle_name(entry, "IPMI Device Information");
+			pr_handle_name(item, "IPMI Device Information");
 			if (h->length < 0x10) break;
 			pr_attr(entry, "Interface Type", "%s",
 				dmi_ipmi_interface_type(data[0x04]));
@@ -5330,7 +5330,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 39: /* 7.40 System Power Supply */
-			pr_handle_name(entry, "System Power Supply");
+			pr_handle_name(item, "System Power Supply");
 			if (h->length < 0x10) break;
 			if (data[0x04] != 0x00)
 				pr_attr(entry, "Power Unit Group", "%u",
@@ -5382,11 +5382,11 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			if (h->length < 0x0B) break;
 			if (opt.flags & FLAG_QUIET)
 				return entry;
-			dmi_additional_info(entry, h);
+			dmi_additional_info(item, entry, h);
 			break;
 
 		case 41: /* 7.42 Onboard Device Extended Information */
-			pr_handle_name(entry, "Onboard Device");
+			pr_handle_name(item, "Onboard Device");
 			if (h->length < 0x0B) break;
 			pr_attr(entry, "Reference Designation", "%s", dmi_string(h, data[0x04]));
 			pr_attr(entry, "Type", "%s",
@@ -5398,7 +5398,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 42: /* 7.43 Management Controller Host Interface */
-			pr_handle_name(entry, "Management Controller Host Interface");
+			pr_handle_name(item, "Management Controller Host Interface");
 			if (ver < 0x0302)
 			{
 				if (h->length < 0x05) break;
@@ -5423,7 +5423,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 43: /* 7.44 TPM Device */
-			pr_handle_name(entry, "TPM Device");
+			pr_handle_name(item, "TPM Device");
 			if (h->length < 0x1B) break;
 			dmi_tpm_vendor_id(entry,data + 0x04);
 			pr_attr(entry, "Specification Version", "%d.%d", data[0x08], data[0x09]);
@@ -5459,7 +5459,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 			break;
 
 		case 45: /* 7.46 Firmware Inventory Information */
-			pr_handle_name(entry, "Firmware Inventory Information");
+			pr_handle_name(item, "Firmware Inventory Information");
 			if (h->length < 0x18) break;
 			pr_attr(entry, "Firmware Component Name", "%s",
 				dmi_string(h, data[0x04]));
@@ -5494,7 +5494,7 @@ static json_object *dmi_decode(const struct dmi_header *h, u16 ver)
 				break;
 			if (opt.flags & FLAG_QUIET)
 				return entry;
-			pr_handle_name(NULL, "%s Type",
+			pr_handle_name(item, "%s Type",
 				h->type >= 128 ? "OEM-specific" : "Unknown");
 			dmi_dump(h);
 	}
@@ -5763,10 +5763,10 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 				pr_sep();
 			}
 			else {
-                json_object *entry = NULL;
-                entry = dmi_decode(&h, ver);
-                if (entry != NULL) {
-                    json_object_object_add(item, "entry", entry);
+                json_object *values = NULL;
+                values = dmi_decode(item, &h, ver);
+                if (values != NULL) {
+                    json_object_object_add(item, "values", values);
                 }
             }
 		}
