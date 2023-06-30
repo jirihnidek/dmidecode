@@ -23,6 +23,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <json-c/json.h>
+#include <string.h>
+#include <ctype.h>
+
 #include "dmioutput.h"
 
 static int output_format = TEXT_FORMAT;
@@ -114,15 +117,25 @@ void pr_attr(json_object *entry, const char *name, const char *format, ...)
 		printf("\n");
 	}
 	if (output_format == JSON_FORMAT && entry != NULL) {
-		char *str;
-		int ret;
-		va_start(args, format);
-		ret = vasprintf(&str, format, args);
-		va_end(args);
-		if (ret != -1) {
-			json_object_object_add(entry, name, json_object_new_string(str));
-			free(str);
-		}
+        char *str;
+        int ret;
+        va_start(args, format);
+        ret = vasprintf(&str, format, args);
+        va_end(args);
+        if (ret != -1) {
+            /* Convert name to lowercase and replace " " with "_" */
+            char *key = strdup(name);
+            for (int i=0; key[i]; i++) {
+                if (key[i] == ' ') {
+                    key[i] = '_';
+                } else {
+                    key[i] = tolower(key[i]);
+                }
+            }
+            json_object_object_add(entry, key, json_object_new_string(str));
+            free(str);
+            free(key);
+        }
 	}
 }
 
@@ -140,15 +153,25 @@ void pr_subattr(json_object *entry, const char *name, const char *format, ...)
     // attribute, because it does not make any sense to change indentation
     // for this output format
 	if (output_format == JSON_FORMAT && entry != NULL) {
-		char *str;
-		int ret;
-		va_start(args, format);
-		ret = vasprintf(&str, format, args);
-		va_end(args);
-		if (ret != -1) {
-			json_object_object_add(entry, name, json_object_new_string(str));
-			free(str);
-		}
+        char *str;
+        int ret;
+        va_start(args, format);
+        ret = vasprintf(&str, format, args);
+        va_end(args);
+        if (ret != -1) {
+            /* Convert name to lowercase and replace " " with "_" */
+            char *key = strdup(name);
+            for (int i=0; key[i]; i++) {
+                if (key[i] == ' ') {
+                    key[i] = '_';
+                } else {
+                    key[i] = tolower(key[i]);
+                }
+            }
+            json_object_object_add(entry, key, json_object_new_string(str));
+            free(str);
+            free(key);
+        }
 	}
 }
 
