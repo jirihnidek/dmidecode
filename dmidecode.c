@@ -229,27 +229,27 @@ static int dmi_bcd_range(u8 value, u8 low, u8 high)
 	return 1;
 }
 
-static void dmi_dump(const struct dmi_header *h)
+static void dmi_dump(json_object *entry, const struct dmi_header *h)
 {
 	static char raw_data[48];
 	int row, i;
 	unsigned int off;
 	char *s;
 
-	pr_list_start("Header and Data", NULL);
+	json_object *list = pr_list_start(entry, "Header and Data", NULL);
 	for (row = 0; row < ((h->length - 1) >> 4) + 1; row++)
 	{
 		off = 0;
 		for (i = 0; i < 16 && i < h->length - (row << 4); i++)
 			off += sprintf(raw_data + off, i ? " %02X" : "%02X",
 			       (h->data)[(row << 4) + i]);
-		pr_list_item(raw_data);
+		pr_list_item(list, raw_data);
 	}
 	pr_list_end();
 
 	if ((h->data)[h->length] || (h->data)[h->length + 1])
 	{
-		pr_list_start("Strings", NULL);
+		json_object *str_list = pr_list_start(entry, "Strings", NULL);
 		i = 1;
 		while ((s = _dmi_string(h, i++, !(opt.flags & FLAG_DUMP))))
 		{
@@ -264,12 +264,12 @@ static void dmi_dump(const struct dmi_header *h)
 						off += sprintf(raw_data + off,
 						       j ? " %02X" : "%02X",
 						       (unsigned char)s[(row << 4) + j]);
-					pr_list_item(raw_data);
+					pr_list_item(str_list, raw_data);
 				}
 				/* String isn't filtered yet so do it now */
 				ascii_filter(s, l - 1);
 			}
-			pr_list_item("%s", s);
+			pr_list_item(str_list, "%s", s);
 		}
 		pr_list_end();
 	}
@@ -355,7 +355,7 @@ static void dmi_bios_rom_size(json_object *entry, u8 code1, u16 code2)
 		pr_attr(entry, "ROM Size", "%u %s", code2 & 0x3FFF, unit[code2 >> 14]);
 }
 
-static void dmi_bios_characteristics(u64 code)
+static void dmi_bios_characteristics(json_object *list, u64 code)
 {
 	/* 7.1.1 */
 	static const char *characteristics[] = {
@@ -396,16 +396,16 @@ static void dmi_bios_characteristics(u64 code)
 	 */
 	if (code.l & (1 << 3))
 	{
-		pr_list_item("%s", characteristics[0]);
+		pr_list_item(list, "%s", characteristics[0]);
 		return;
 	}
 
 	for (i = 4; i <= 31; i++)
 		if (code.l & (1 << i))
-			pr_list_item("%s", characteristics[i - 3]);
+			pr_list_item(list, "%s", characteristics[i - 3]);
 }
 
-static void dmi_bios_characteristics_x1(u8 code)
+static void dmi_bios_characteristics_x1(json_object *list, u8 code)
 {
 	/* 7.1.2.1 */
 	static const char *characteristics[] = {
@@ -422,10 +422,10 @@ static void dmi_bios_characteristics_x1(u8 code)
 
 	for (i = 0; i <= 7; i++)
 		if (code & (1 << i))
-			pr_list_item("%s", characteristics[i]);
+			pr_list_item(list, "%s", characteristics[i]);
 }
 
-static void dmi_bios_characteristics_x2(u8 code)
+static void dmi_bios_characteristics_x2(json_object *list, u8 code)
 {
 	/* 37.1.2.2 */
 	static const char *characteristics[] = {
@@ -441,7 +441,7 @@ static void dmi_bios_characteristics_x2(u8 code)
 
 	for (i = 0; i <= 6; i++)
 		if (code & (1 << i))
-			pr_list_item("%s", characteristics[i]);
+			pr_list_item(list, "%s", characteristics[i]);
 }
 
 /*
@@ -535,8 +535,9 @@ static const char *dmi_system_wake_up_type(u8 code)
  * 7.3 Base Board Information (Type 2)
  */
 
-static void dmi_base_board_features(u8 code)
+static void dmi_base_board_features(json_object *entry, u8 code)
 {
+    json_object *list = NULL;
 	/* 7.3.1 */
 	static const char *features[] = {
 		"Board is a hosting board", /* 0 */
@@ -547,15 +548,15 @@ static void dmi_base_board_features(u8 code)
 	};
 
 	if ((code & 0x1F) == 0)
-		pr_list_start("Features", "%s", "None");
+		list = pr_list_start(entry,"Features", "%s", "None");
 	else
 	{
 		int i;
 
-		pr_list_start("Features", NULL);
+		list = pr_list_start(entry, "Features", NULL);
 		for (i = 0; i <= 4; i++)
 			if (code & (1 << i))
-				pr_list_item("%s", features[i]);
+				pr_list_item(list,"%s", features[i]);
 	}
 	pr_list_end();
 }
@@ -584,13 +585,13 @@ static const char *dmi_base_board_type(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_base_board_handles(u8 count, const u8 *p)
+static void dmi_base_board_handles(json_object *entry, u8 count, const u8 *p)
 {
 	int i;
 
-	pr_list_start("Contained Object Handles", "%u", count);
+	json_object *list = pr_list_start(entry,"Contained Object Handles", "%u", count);
 	for (i = 0; i < count; i++)
-		pr_list_item("0x%04X", WORD(p + sizeof(u16) * i));
+		pr_list_item(list, "0x%04X", WORD(p + sizeof(u16) * i));
 	pr_list_end();
 }
 
@@ -706,11 +707,11 @@ static void dmi_chassis_power_cords(json_object *entry, u8 code)
 		pr_attr(entry, "Number Of Power Cords", "%u", code);
 }
 
-static void dmi_chassis_elements(u8 count, u8 len, const u8 *p)
+static void dmi_chassis_elements(json_object *entry, u8 count, u8 len, const u8 *p)
 {
 	int i;
 
-	pr_list_start("Contained Elements", "%u", count);
+	json_object *list = pr_list_start(entry, "Contained Elements", "%u", count);
 	for (i = 0; i < count; i++)
 	{
 		if (len >= 0x03)
@@ -722,9 +723,9 @@ static void dmi_chassis_elements(u8 count, u8 len, const u8 *p)
 				dmi_base_board_type(p[i * len] & 0x7F);
 
 			if (p[1 + i * len] == p[2 + i * len])
-				pr_list_item("%s (%u)", type, p[1 + i * len]);
+				pr_list_item(list, "%s (%u)", type, p[1 + i * len]);
 			else
-				pr_list_item("%s (%u-%u)", type, p[1 + i * len],
+				pr_list_item(list, "%s (%u-%u)", type, p[1 + i * len],
 					     p[2 + i * len]);
 		}
 	}
@@ -1295,15 +1296,15 @@ static void dmi_processor_id(json_object *entry, const struct dmi_header *h)
 
 	edx = DWORD(p + 4);
 	if ((edx & 0xBFEFFBFF) == 0)
-		pr_list_start("Flags", "None");
+		pr_list_start(entry, "Flags", "None");
 	else
 	{
 		int i;
 
-		pr_list_start("Flags", NULL);
+        json_object *list = pr_list_start(entry, "Flags", NULL);
 		for (i = 0; i <= 31; i++)
 			if (flags[i] != NULL && edx & (1 << i))
-				pr_list_item("%s", flags[i]);
+				pr_list_item(list, "%s", flags[i]);
 	}
 	pr_list_end();
 }
@@ -1496,10 +1497,10 @@ static void dmi_processor_characteristics(json_object *entry, const char *attr, 
 	{
 		int i;
 
-		pr_list_start(attr, NULL);
+        json_object *list = pr_list_start(entry, attr, NULL);
 		for (i = 2; i <= 9; i++)
 			if (code & (1 << i))
-				pr_list_item("%s", characteristics[i - 2]);
+				pr_list_item(list, "%s", characteristics[i - 2]);
 		pr_list_end();
 	}
 }
@@ -1545,10 +1546,10 @@ static void dmi_memory_controller_ec_capabilities(json_object *entry, const char
 	{
 		int i;
 
-		pr_list_start(attr, NULL);
+		json_object *list = pr_list_start(entry, attr, NULL);
 		for (i = 0; i <= 5; i++)
 			if (code & (1 << i))
-				pr_list_item("%s", capabilities[i]);
+				pr_list_item(list, "%s", capabilities[i]);
 		pr_list_end();
 	}
 }
@@ -1588,21 +1589,21 @@ static void dmi_memory_controller_speeds(json_object *entry, const char *attr, u
 	{
 		int i;
 
-		pr_list_start(attr, NULL);
+		json_object *list = pr_list_start(entry, attr, NULL);
 		for (i = 0; i <= 4; i++)
 			if (code & (1 << i))
-				pr_list_item("%s", speeds[i]);
+				pr_list_item(list, "%s", speeds[i]);
 		pr_list_end();
 	}
 }
 
-static void dmi_memory_controller_slots(u8 count, const u8 *p)
+static void dmi_memory_controller_slots(json_object *entry, u8 count, const u8 *p)
 {
 	int i;
 
-	pr_list_start("Associated Memory Slots", "%u", count);
+	json_object *list = pr_list_start(entry, "Associated Memory Slots", "%u", count);
 	for (i = 0; i < count; i++)
-		pr_list_item("0x%04X", WORD(p + sizeof(u16) * i));
+		pr_list_item(list, "0x%04X", WORD(p + sizeof(u16) * i));
 	pr_list_end();
 }
 
@@ -1651,10 +1652,10 @@ static void dmi_memory_module_types(json_object *entry, const char *attr, u16 co
 	{
 		int i;
 
-		pr_list_start(attr, NULL);
+		json_object *list = pr_list_start(entry, attr, NULL);
 		for (i = 0; i <= 10; i++)
 			if (code & (1 << i))
-				pr_list_item("%s", types[i]);
+				pr_list_item(list, "%s", types[i]);
 		pr_list_end();
 	}
 }
@@ -1813,10 +1814,10 @@ static void dmi_cache_types(json_object *entry, const char *attr, u16 code, int 
 	{
 		int i;
 
-		pr_list_start(attr, NULL);
+		json_object *list = pr_list_start(entry, attr, NULL);
 		for (i = 0; i <= 6; i++)
 			if (code & (1 << i))
-				pr_list_item("%s", types[i]);
+				pr_list_item(list, "%s", types[i]);
 		pr_list_end();
 	}
 }
@@ -2270,13 +2271,13 @@ static void dmi_slot_characteristics(json_object *entry, const char *attr, u8 co
 	{
 		int i;
 
-		pr_list_start(attr, NULL);
+        json_object *list = pr_list_start(entry, attr, NULL);
 		for (i = 1; i <= 7; i++)
 			if (code1 & (1 << i))
-				pr_list_item("%s", characteristics1[i - 1]);
+				pr_list_item(list, "%s", characteristics1[i - 1]);
 		for (i = 0; i <= 6; i++)
 			if (code2 & (1 << i))
-				pr_list_item("%s", characteristics2[i]);
+				pr_list_item(list, "%s", characteristics2[i]);
 		pr_list_end();
 	}
 }
@@ -2470,14 +2471,14 @@ static void dmi_system_configuration_options(json_object *entry, const struct dm
  * 7.14 BIOS Language Information (Type 13)
  */
 
-static void dmi_bios_languages(const struct dmi_header *h)
+static void dmi_bios_languages(json_object *list, const struct dmi_header *h)
 {
 	u8 *p = h->data + 4;
 	u8 count = p[0x00];
 	int i;
 
 	for (i = 1; i <= count; i++)
-		pr_list_item("%s", dmi_string(h, i));
+		pr_list_item(list, "%s", dmi_string(h, i));
 }
 
 static const char *dmi_bios_language_format(u8 code)
@@ -2492,13 +2493,13 @@ static const char *dmi_bios_language_format(u8 code)
  * 7.15 Group Associations (Type 14)
  */
 
-static void dmi_group_associations_items(u8 count, const u8 *p)
+static void dmi_group_associations_items(json_object *list, u8 count, const u8 *p)
 {
 	int i;
 
 	for (i = 0; i < count; i++)
 	{
-		pr_list_item("0x%04X (%s)",
+		pr_list_item(list, "0x%04X (%s)",
 			WORD(p + 3 * i + 1),
 			dmi_smbios_structure_type(p[3 * i]));
 	}
@@ -4058,7 +4059,7 @@ static const char *dmi_parse_device_type(u8 type)
 /*
  * DSP0270: 8.3.7: Device Characteristics
  */
-static void dmi_device_characteristics(u16 code)
+static void dmi_device_characteristics(json_object *list, u16 code)
 {
 	const char *characteristics[] = {
 		"Credential bootstrapping via IPMI is supported", /* 0 */
@@ -4066,14 +4067,14 @@ static void dmi_device_characteristics(u16 code)
 	};
 
 	if ((code & 0x1) == 0)
-		pr_list_item("None");
+		pr_list_item(list, "None");
 	else
 	{
 		int i;
 
 		for (i = 0; i < 1; i++)
 			if (code & (1 << i))
-				pr_list_item("%s", characteristics[i]);
+				pr_list_item(list, "%s", characteristics[i]);
 	}
 }
 
@@ -4181,8 +4182,8 @@ static void dmi_parse_controller_structure(json_object *entry, const struct dmi_
 			if (len >= 0x11)
 			{
 				/* USB Device Descriptor v2: Device Characteristics */
-				pr_list_start("Device Characteristics", NULL);
-				dmi_device_characteristics(WORD(&usbdata[0xc]));
+                json_object *list = pr_list_start(entry, "Device Characteristics", NULL);
+				dmi_device_characteristics(list, WORD(&usbdata[0xc]));
 				pr_list_end();
 
 				/* USB Device Descriptor v2: Credential Bootstrapping Handle */
@@ -4222,8 +4223,8 @@ static void dmi_parse_controller_structure(json_object *entry, const struct dmi_
 			if (len >= 0x18)
 			{
 				/* PCI Device Descriptor v2: Device Characteristics */
-				pr_list_start("Device Characteristics", NULL);
-				dmi_device_characteristics(WORD(&pcidata[0x13]) );
+                json_object *list = pr_list_start(entry, "Device Characteristics", NULL);
+				dmi_device_characteristics(list, WORD(&pcidata[0x13]) );
 				pr_list_end();
 				/* PCI Device Descriptor v2: Credential Bootstrapping Handle */
 				if (WORD(&pcidata[0x13]) & 0x1)
@@ -4325,7 +4326,7 @@ static void dmi_tpm_vendor_id(json_object *entry, const u8 *p)
 	pr_attr(entry, "Vendor ID", "%s", vendor_id);
 }
 
-static void dmi_tpm_characteristics(u64 code)
+static void dmi_tpm_characteristics(json_object *list, u64 code)
 {
 	/* 7.1.1 */
 	static const char *characteristics[] = {
@@ -4341,20 +4342,20 @@ static void dmi_tpm_characteristics(u64 code)
 	 */
 	if (code.l & (1 << 2))
 	{
-		pr_list_item("%s", characteristics[0]);
+		pr_list_item(list, "%s", characteristics[0]);
 		return;
 	}
 
 	for (i = 3; i <= 5; i++)
 		if (code.l & (1 << i))
-			pr_list_item("%s", characteristics[i - 2]);
+			pr_list_item(list, "%s", characteristics[i - 2]);
 }
 
 /*
  * 7.46 Firmware Inventory Information (Type 45)
  */
 
-static void dmi_firmware_characteristics(u16 code)
+static void dmi_firmware_characteristics(json_object *list, u16 code)
 {
 	/* 7.46.3 */
 	static const char *characteristics[] = {
@@ -4364,7 +4365,7 @@ static void dmi_firmware_characteristics(u16 code)
 	int i;
 
 	for (i = 0; i <= 1; i++)
-		pr_list_item("%s: %s", characteristics[i],
+		pr_list_item(list, "%s: %s", characteristics[i],
 			     (code & (1 << i)) ? "Yes" : "No");
 }
 
@@ -4387,13 +4388,13 @@ static const char *dmi_firmware_state(u8 code)
 	return out_of_spec;
 }
 
-static void dmi_firmware_components(u8 count, const u8 *p)
+static void dmi_firmware_components(json_object *entry, u8 count, const u8 *p)
 {
 	int i;
 
-	pr_list_start("Associated Components", "%u", count);
+	json_object *list = pr_list_start(entry, "Associated Components", "%u", count);
 	for (i = 0; i < count; i++)
-		pr_list_item("0x%04X", WORD(p + sizeof(u16) * i));
+		pr_list_item(list, "0x%04X", WORD(p + sizeof(u16) * i));
 	pr_list_end();
 }
 
@@ -4436,13 +4437,13 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 				dmi_bios_runtime_size(entry, (0x10000 - WORD(data + 0x06)) << 4);
 			}
 			dmi_bios_rom_size(entry, data[0x09], h->length < 0x1A ? 16 : WORD(data + 0x18));
-			pr_list_start("Characteristics", NULL);
-			dmi_bios_characteristics(QWORD(data + 0x0A));
+			json_object *list0 = pr_list_start(entry, "Characteristics", NULL);
+			dmi_bios_characteristics(list0, QWORD(data + 0x0A));
 			pr_list_end();
 			if (h->length < 0x13) break;
-			dmi_bios_characteristics_x1(data[0x12]);
+			dmi_bios_characteristics_x1(list0, data[0x12]);
 			if (h->length < 0x14) break;
-			dmi_bios_characteristics_x2(data[0x13]);
+			dmi_bios_characteristics_x2(list0, data[0x13]);
 			if (h->length < 0x18) break;
 			if (data[0x14] != 0xFF && data[0x15] != 0xFF)
 				pr_attr(entry, "BIOS Revision", "%u.%u",
@@ -4489,7 +4490,7 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 			pr_attr(entry, "Asset Tag", "%s",
 				dmi_string(h, data[0x08]));
 			if (h->length < 0x0A) break;
-			dmi_base_board_features(data[0x09]);
+			dmi_base_board_features(entry, data[0x09]);
 			if (h->length < 0x0E) break;
 			pr_attr(entry, "Location In Chassis", "%s",
 				dmi_string(h, data[0x0A]));
@@ -4501,7 +4502,7 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 			if (h->length < 0x0F) break;
 			if (h->length < 0x0F + data[0x0E] * sizeof(u16)) break;
 			if (!(opt.flags & FLAG_QUIET))
-				dmi_base_board_handles(data[0x0E], data + 0x0F);
+				dmi_base_board_handles(entry, data[0x0E], data + 0x0F);
 			break;
 
 		case 3: /* 7.4 Chassis Information */
@@ -4536,7 +4537,7 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 			dmi_chassis_power_cords(entry, data[0x12]);
 			if (h->length < 0x15) break;
 			if (h->length < 0x15 + data[0x13] * data[0x14]) break;
-			dmi_chassis_elements(data[0x13], data[0x14], data + 0x15);
+			dmi_chassis_elements(entry, data[0x13], data[0x14], data + 0x15);
 			if (h->length < 0x16 + data[0x13] * data[0x14]) break;
 			pr_attr(entry, "SKU Number", "%s",
 				dmi_string(h, data[0x15 + data[0x13] * data[0x14]]));
@@ -4625,7 +4626,7 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 						WORD(data + 0x0B), 0);
 			dmi_processor_voltage(entry, "Memory Module Voltage", data[0x0D]);
 			if (h->length < 0x0F + data[0x0E] * sizeof(u16)) break;
-			dmi_memory_controller_slots(data[0x0E], data + 0x0F);
+			dmi_memory_controller_slots(entry, data[0x0E], data + 0x0F);
 			if (h->length < 0x10 + data[0x0E] * sizeof(u16)) break;
 			dmi_memory_controller_ec_capabilities(entry, "Enabled Error Correcting Capabilities",
 							      data[0x0F + data[0x0E] * sizeof(u16)]);
@@ -4747,8 +4748,8 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 				pr_attr(entry, "Language Description Format", "%s",
 					dmi_bios_language_format(data[0x05]));
 			}
-			pr_list_start("Installable Languages", "%u", data[0x04]);
-			dmi_bios_languages(h);
+			json_object *list13 = pr_list_start(entry, "Installable Languages", "%u", data[0x04]);
+			dmi_bios_languages(list13, h);
 			pr_list_end();
 			pr_attr(entry, "Currently Installed Language", "%s",
 				dmi_string(h, data[0x15]));
@@ -4759,9 +4760,9 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 			if (h->length < 0x05) break;
 			pr_attr(entry, "Name", "%s",
 				dmi_string(h, data[0x04]));
-			pr_list_start("Items", "%u",
+			json_object *list14 = pr_list_start(entry, "Items", "%u",
 				(h->length - 0x05) / 3);
-			dmi_group_associations_items((h->length - 0x05) / 3, data + 0x05);
+			dmi_group_associations_items(list14, (h->length - 0x05) / 3, data + 0x05);
 			pr_list_end();
 			break;
 
@@ -5450,8 +5451,8 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 					break;
 			}
 			pr_attr(entry, "Description", "%s", dmi_string(h, data[0x12]));
-			pr_list_start("Characteristics", NULL);
-			dmi_tpm_characteristics(QWORD(data + 0x13));
+			json_object *list44 = pr_list_start(entry, "Characteristics", NULL);
+			dmi_tpm_characteristics(list44, QWORD(data + 0x13));
 			pr_list_end();
 			if (h->length < 0x1F) break;
 			pr_attr(entry, "OEM-specific Information", "0x%08X",
@@ -5471,13 +5472,13 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 			pr_attr(entry, "Lowest Supported Firmware Version", "%s",
 				dmi_string(h, data[0x0B]));
 			dmi_memory_size(entry, "Image Size", QWORD(data + 0x0C));
-			pr_list_start("Characteristics", NULL);
-			dmi_firmware_characteristics(WORD(data + 0x14));
+			json_object *list45 = pr_list_start(entry, "Characteristics", NULL);
+			dmi_firmware_characteristics(list45, WORD(data + 0x14));
 			pr_list_end();
 			pr_attr(entry, "State", "%s", dmi_firmware_state(data[0x16]));
 			if (h->length < 0x18 + data[0x17] * 2) break;
 			if (!(opt.flags & FLAG_QUIET))
-				dmi_firmware_components(data[0x17], data + 0x18);
+				dmi_firmware_components(entry, data[0x17], data + 0x18);
 			break;
 
 		case 126:
@@ -5496,7 +5497,7 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 				return entry;
 			pr_handle_name(item, "%s Type",
 				h->type >= 128 ? "OEM-specific" : "Unknown");
-			dmi_dump(h);
+			dmi_dump(entry, h);
 	}
 	pr_sep();
     return entry;
@@ -5759,7 +5760,7 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		{
 			if (opt.flags & FLAG_DUMP)
 			{
-				dmi_dump(&h);
+				dmi_dump(item, &h);
 				pr_sep();
 			}
 			else {

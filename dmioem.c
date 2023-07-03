@@ -706,7 +706,7 @@ static void dmi_hp_239_usb_device(json_object *entry, u8 class, u8 subclass, u8 
 	}
 }
 
-static void dmi_hp_240_attr(u64 defined, u64 set)
+static void dmi_hp_240_attr(json_object *entry, u64 defined, u64 set)
 {
 	static const char *attributes[] = {
 		"Updatable",
@@ -717,12 +717,12 @@ static void dmi_hp_240_attr(u64 defined, u64 set)
 	};
 	unsigned int i;
 
-	pr_list_start("Attributes Defined/Set", NULL);
+    json_object *list = pr_list_start(entry, "Attributes Defined/Set", NULL);
 	for (i = 0; i < ARRAY_SIZE(attributes); i++)
 	{
 		if (!(defined.l & (1UL << i)))
 			continue;
-		pr_list_item("%s: %s", attributes[i], set.l & (1UL << i) ? "Yes" : "No");
+		pr_list_item(list, "%s: %s", attributes[i], set.l & (1UL << i) ? "Yes" : "No");
 	}
 	pr_list_end();
 }
@@ -1442,7 +1442,7 @@ static int dmi_decode_hp(json_object *entry, const struct dmi_header *h)
 			else
 				pr_attr(entry, "Image Size", "Not Available");
 
-			dmi_hp_240_attr(QWORD(data + 0x13), QWORD(data + 0x1B));
+			dmi_hp_240_attr(entry, QWORD(data + 0x13), QWORD(data + 0x1B));
 
 			if (DWORD(data + 0x23))
 				pr_attr(entry, "Lowest Supported Version", "0x%08X", DWORD(data + 0x23));
