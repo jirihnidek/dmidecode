@@ -717,7 +717,7 @@ static void dmi_hp_240_attr(json_object *entry, u64 defined, u64 set)
 	};
 	unsigned int i;
 
-    json_object *list = pr_list_start(entry, "Attributes Defined/Set", NULL);
+	json_object *list = pr_list_start(entry, "Attributes Defined/Set", NULL);
 	for (i = 0; i < ARRAY_SIZE(attributes); i++)
 	{
 		if (!(defined.l & (1UL << i)))

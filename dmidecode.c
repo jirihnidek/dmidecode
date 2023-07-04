@@ -537,7 +537,7 @@ static const char *dmi_system_wake_up_type(u8 code)
 
 static void dmi_base_board_features(json_object *entry, u8 code)
 {
-    json_object *list = NULL;
+	json_object *list = NULL;
 	/* 7.3.1 */
 	static const char *features[] = {
 		"Board is a hosting board", /* 0 */
@@ -1138,7 +1138,7 @@ static enum cpuid_type dmi_get_cpuid_type(const struct dmi_header *h)
 }
 
 void dmi_print_cpuid(void (*print_cb)(json_object *entry, const char *name, const char *format, ...),
-                     json_object *entry, const char *label, enum cpuid_type sig, const u8 *p)
+						json_object *entry, const char *label, enum cpuid_type sig, const u8 *p)
 {
 	u32 eax, midr, jep106, soc_revision;
 	u16 dx;
@@ -1301,7 +1301,7 @@ static void dmi_processor_id(json_object *entry, const struct dmi_header *h)
 	{
 		int i;
 
-        json_object *list = pr_list_start(entry, "Flags", NULL);
+		json_object *list = pr_list_start(entry, "Flags", NULL);
 		for (i = 0; i <= 31; i++)
 			if (flags[i] != NULL && edx & (1 << i))
 				pr_list_item(list, "%s", flags[i]);
@@ -1497,7 +1497,7 @@ static void dmi_processor_characteristics(json_object *entry, const char *attr, 
 	{
 		int i;
 
-        json_object *list = pr_list_start(entry, attr, NULL);
+		json_object *list = pr_list_start(entry, attr, NULL);
 		for (i = 2; i <= 9; i++)
 			if (code & (1 << i))
 				pr_list_item(list, "%s", characteristics[i - 2]);
@@ -2271,7 +2271,7 @@ static void dmi_slot_characteristics(json_object *entry, const char *attr, u8 co
 	{
 		int i;
 
-        json_object *list = pr_list_start(entry, attr, NULL);
+		json_object *list = pr_list_start(entry, attr, NULL);
 		for (i = 1; i <= 7; i++)
 			if (code1 & (1 << i))
 				pr_list_item(list, "%s", characteristics1[i - 1]);
@@ -4182,7 +4182,7 @@ static void dmi_parse_controller_structure(json_object *entry, const struct dmi_
 			if (len >= 0x11)
 			{
 				/* USB Device Descriptor v2: Device Characteristics */
-                json_object *list = pr_list_start(entry, "Device Characteristics", NULL);
+				json_object *list = pr_list_start(entry, "Device Characteristics", NULL);
 				dmi_device_characteristics(list, WORD(&usbdata[0xc]));
 				pr_list_end();
 
@@ -4223,7 +4223,7 @@ static void dmi_parse_controller_structure(json_object *entry, const struct dmi_
 			if (len >= 0x18)
 			{
 				/* PCI Device Descriptor v2: Device Characteristics */
-                json_object *list = pr_list_start(entry, "Device Characteristics", NULL);
+				json_object *list = pr_list_start(entry, "Device Characteristics", NULL);
 				dmi_device_characteristics(list, WORD(&pcidata[0x13]) );
 				pr_list_end();
 				/* PCI Device Descriptor v2: Credential Bootstrapping Handle */
@@ -4405,11 +4405,11 @@ static void dmi_firmware_components(json_object *entry, u8 count, const u8 *p)
 static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u16 ver)
 {
 	const u8 *data = h->data;
-    json_object *entry = NULL;
+	json_object *entry = NULL;
 
-    if (opt.flags & FLAG_JSON) {
-        entry = json_object_new_object();
-    }
+	if (opt.flags & FLAG_JSON) {
+		entry = json_object_new_object();
+	}
 
 	/*
 	 * Note: DMI types 37 and 42 are untested
@@ -5482,7 +5482,7 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 			break;
 
 		case 126:
-            // TODO: create inactive entry
+			// TODO: create inactive entry
 			pr_handle_name(NULL, "Inactive");
 			break;
 
@@ -5500,7 +5500,7 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 			dmi_dump(entry, h);
 	}
 	pr_sep();
-    return entry;
+	return entry;
 }
 
 static void to_dmi_header(struct dmi_header *h, u8 *data)
@@ -5627,11 +5627,11 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 {
 	u8 *data;
 	int i = 0;
-    json_object *root = NULL;
+	json_object *root = NULL;
 
-    if (opt.flags & FLAG_JSON) {
-        root = json_object_new_object();
-    }
+	if (opt.flags & FLAG_JSON) {
+		root = json_object_new_object();
+	}
 
 	/* First pass: Save specific values needed to decode OEM types */
 	data = buf;
@@ -5677,10 +5677,10 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 	}
 
 	/* Second pass: Actually decode the data */
-    json_object *array = NULL;
-    if (opt.flags & FLAG_JSON) {
-        array = json_object_new_array();
-    }
+	json_object *array = NULL;
+	if (opt.flags & FLAG_JSON) {
+		array = json_object_new_array();
+	}
 	i = 0;
 	data = buf;
 	while ((i < num || !num)
@@ -5690,10 +5690,10 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		struct dmi_header h;
 		int display;
 
-        json_object *item = NULL;
-        if (opt.flags & FLAG_JSON) {
-            item = json_object_new_object();
-        }
+		json_object *item = NULL;
+		if (opt.flags & FLAG_JSON) {
+			item = json_object_new_object();
+		}
 
 		to_dmi_header(&h, data);
 		display = ((opt.type == NULL || opt.type[h.type])
@@ -5725,15 +5725,15 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		if ((opt.flags & FLAG_QUIET) && h.type == 127)
 			break;
 
-        json_object *header = NULL;
+		json_object *header = NULL;
 		if (display
 		 && (!(opt.flags & FLAG_QUIET) || (opt.flags & FLAG_DUMP)))
-        {
-            header = pr_handle(&h);
-            if (header != NULL) {
-                json_object_object_add(item, "header", header);
-            }
-        }
+		{
+			header = pr_handle(&h);
+			if (header != NULL) {
+				json_object_object_add(item, "header", header);
+			}
+		}
 
 		/* Look for the next handle */
 		next = data + h.length;
@@ -5764,20 +5764,20 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 				pr_sep();
 			}
 			else {
-                json_object *values = NULL;
-                values = dmi_decode(item, &h, ver);
-                if (values != NULL) {
-                    json_object_object_add(item, "values", values);
-                }
-            }
+				json_object *values = NULL;
+				values = dmi_decode(item, &h, ver);
+				if (values != NULL) {
+					json_object_object_add(item, "values", values);
+				}
+			}
 		}
 		else if (opt.string != NULL
 		      && opt.string->type == h.type)
 			dmi_table_string(&h, data, ver);
 
-        if (opt.flags & FLAG_JSON) {
-            json_object_array_add(array, item);
-        }
+		if (opt.flags & FLAG_JSON) {
+			json_object_array_add(array, item);
+		}
 
 		data = next;
 
@@ -5786,15 +5786,15 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 			break;
 	}
 
-    if (opt.flags & FLAG_JSON) {
-        /* Add array of decoded entries */
-        json_object_object_add(root, "data", array);
+	if (opt.flags & FLAG_JSON) {
+		/* Add array of decoded entries */
+		json_object_object_add(root, "data", array);
 
-        /* Print json object to stdout */
-        printf("%s\n", json_object_to_json_string_ext(root, JSON_C_TO_STRING_PRETTY));
+		/* Print json object to stdout */
+		printf("%s\n", json_object_to_json_string_ext(root, JSON_C_TO_STRING_PRETTY));
 
-        json_object_put(root);
-    }
+		json_object_put(root);
+	}
 
 	/*
 	 * SMBIOS v3 64-bit entry points do not announce a structures count,
@@ -6215,9 +6215,9 @@ int main(int argc, char * const argv[])
 		goto exit_free;
 	}
 
-    if (opt.flags & FLAG_JSON) {
-        pr_set_json_format();
-    }
+	if (opt.flags & FLAG_JSON) {
+		pr_set_json_format();
+	}
 
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);

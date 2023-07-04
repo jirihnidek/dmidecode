@@ -279,7 +279,7 @@ int parse_command_line(int argc, char * const argv[])
 		{ "handle", required_argument, NULL, 'H' },
 		{ "oem-string", required_argument, NULL, 'O' },
 		{ "no-sysfs", no_argument, NULL, 'S' },
-        { "json", no_argument, NULL, 'j' },
+		{ "json", no_argument, NULL, 'j' },
 		{ "version", no_argument, NULL, 'V' },
 		{ NULL, 0, NULL, 0 }
 	};
@@ -333,9 +333,9 @@ int parse_command_line(int argc, char * const argv[])
 			case 'S':
 				opt.flags |= FLAG_NO_SYSFS;
 				break;
-            case 'j':
-                opt.flags |= FLAG_JSON;
-                break;
+			case 'j':
+				opt.flags |= FLAG_JSON;
+				break;
 			case 'V':
 				opt.flags |= FLAG_VERSION;
 				break;
@@ -388,7 +388,7 @@ void print_help(void)
 		"     --from-dump FILE   Read the DMI data from a binary file\n"
 		"     --no-sysfs         Do not attempt to read DMI data from sysfs files\n"
 		"     --oem-string N     Only display the value of the given OEM string\n"
-        " -j, --json             Output information in JSON format\n"
+		" -j, --json             Output information in JSON format\n"
 		" -V, --version          Display the version and exit\n";
 
 	printf("%s", help);
