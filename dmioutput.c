@@ -125,7 +125,8 @@ void pr_attr(json_object *entry, const char *name, const char *format, ...)
 		if (ret != -1) {
 			/* Convert name to lowercase and replace " " with "_" */
 			char *key = strdup(name);
-			for (int i=0; key[i]; i++) {
+			int i;
+			for (i=0; key[i]; i++) {
 				if (key[i] == ' ') {
 					key[i] = '_';
 				} else {
@@ -161,7 +162,8 @@ void pr_subattr(json_object *entry, const char *name, const char *format, ...)
 		if (ret != -1) {
 			/* Convert name to lowercase and replace " " with "_" */
 			char *key = strdup(name);
-			for (int i=0; key[i]; i++) {
+			int i;
+			for (i=0; key[i]; i++) {
 				if (key[i] == ' ') {
 					key[i] = '_';
 				} else {
@@ -212,7 +214,8 @@ void pr_subattr(json_object *entry, const char *name, const char *format, ...)
 			key = strdup(name);
 		}
 		if (key != NULL) {
-			for (int i = 0; key[i]; i++) {
+			int i;
+			for (i = 0; key[i]; i++) {
 				if (key[i] == ' ') {
 					key[i] = '_';
 				} else {
