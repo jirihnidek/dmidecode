@@ -68,20 +68,17 @@ void pr_info(const char *format, ...)
 	}
 }
 
-json_object *pr_handle(const struct dmi_header *h)
+void pr_handle(json_object *item, const struct dmi_header *h)
 {
 	if (output_format == TEXT_FORMAT) {
 		printf("Handle 0x%04X, DMI type %d, %d bytes\n",
 			   h->handle, h->type, h->length);
 	}
-	if (output_format == JSON_FORMAT) {
-		json_object *header = json_object_new_object();
-		json_object_object_add(header, "handle", json_object_new_int(h->handle));
-		json_object_object_add(header, "type", json_object_new_int(h->type));
-		json_object_object_add(header, "length", json_object_new_int(h->length));
-		return header;
+	if (output_format == JSON_FORMAT && item != NULL) {
+		json_object_object_add(item, "handle", json_object_new_int(h->handle));
+		json_object_object_add(item, "type", json_object_new_int(h->type));
+		json_object_object_add(item, "length", json_object_new_int(h->length));
 	}
-	return NULL;
 }
 
 void pr_handle_name(json_object *item, const char *format, ...)

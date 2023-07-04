@@ -5725,14 +5725,10 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		if ((opt.flags & FLAG_QUIET) && h.type == 127)
 			break;
 
-		json_object *header = NULL;
 		if (display
 		 && (!(opt.flags & FLAG_QUIET) || (opt.flags & FLAG_DUMP)))
 		{
-			header = pr_handle(&h);
-			if (header != NULL) {
-				json_object_object_add(item, "header", header);
-			}
+			pr_handle(item, &h);
 		}
 
 		/* Look for the next handle */

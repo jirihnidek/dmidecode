@@ -29,7 +29,7 @@ void pr_set_json_format(void);
 void pr_printf(const char *format, ...);
 void pr_comment(const char *format, ...);
 void pr_info(const char *format, ...);
-json_object *pr_handle(const struct dmi_header *h);
+void pr_handle(json_object *item, const struct dmi_header *h);
 void pr_handle_name(json_object *item, const char *format, ...);
 void pr_attr(json_object *entry, const char *name, const char *format, ...);
 void pr_subattr(json_object *entry, const char *name, const char *format, ...);
