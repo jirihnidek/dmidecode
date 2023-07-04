@@ -5690,11 +5690,6 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		struct dmi_header h;
 		int display;
 
-		json_object *item = NULL;
-		if (opt.flags & FLAG_JSON) {
-			item = json_object_new_object();
-		}
-
 		to_dmi_header(&h, data);
 		display = ((opt.type == NULL || opt.type[h.type])
 			&& (opt.handle == ~0U || opt.handle == h.handle)
@@ -5724,6 +5719,11 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		/* In quiet mode, stop decoding at end of table marker */
 		if ((opt.flags & FLAG_QUIET) && h.type == 127)
 			break;
+
+		json_object *item = NULL;
+		if (display && (opt.flags & FLAG_JSON)) {
+			item = json_object_new_object();
+		}
 
 		if (display
 		 && (!(opt.flags & FLAG_QUIET) || (opt.flags & FLAG_DUMP)))
@@ -5771,7 +5771,7 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		      && opt.string->type == h.type)
 			dmi_table_string(&h, data, ver);
 
-		if (opt.flags & FLAG_JSON) {
+		if (display && (opt.flags & FLAG_JSON)) {
 			json_object_array_add(array, item);
 		}
 
