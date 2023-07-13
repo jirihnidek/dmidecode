@@ -216,7 +216,7 @@ void pr_subattr(json_object *entry, const char *name, const char *format, ...)
 				key = malloc(len_name + len_str + 1);
 				if (key != NULL) {
 					key[0] = '\0';
-					strcpy(key, str);
+					strcpy(key, name);
 					strcat(key, str);
 				} else {
 					fprintf(stderr, "Unable to allocate memory (size: %ld) for JSON key\n", len_name + len_str + 1);
