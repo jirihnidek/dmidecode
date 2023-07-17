@@ -5482,7 +5482,6 @@ static json_object *dmi_decode(json_object *item, const struct dmi_header *h, u1
 			break;
 
 		case 126:
-			// TODO: create inactive entry
 			pr_handle_name(NULL, "Inactive");
 			break;
 
@@ -5761,6 +5760,11 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 			}
 			else {
 				json_object *values = NULL;
+				if (h.type == 126) {
+					json_object_object_add(item, "active", json_object_new_boolean(0));
+				} else {
+					json_object_object_add(item, "active", json_object_new_boolean(1));
+				}
 				values = dmi_decode(item, &h, ver);
 				if (values != NULL) {
 					json_object_object_add(item, "values", values);
