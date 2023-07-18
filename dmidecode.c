@@ -5760,10 +5760,12 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 			}
 			else {
 				json_object *values = NULL;
-				if (h.type == 126) {
-					json_object_object_add(item, "active", json_object_new_boolean(0));
-				} else {
-					json_object_object_add(item, "active", json_object_new_boolean(1));
+				if (opt.flags & FLAG_JSON) {
+					if (h.type == 126) {
+						json_object_object_add(item, "active", json_object_new_boolean(0));
+					} else {
+						json_object_object_add(item, "active", json_object_new_boolean(1));
+					}
 				}
 				values = dmi_decode(item, &h, ver);
 				if (values != NULL) {
