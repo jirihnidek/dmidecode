@@ -5622,15 +5622,10 @@ err_close:
 	return -1;
 }
 
-static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
+static void dmi_table_decode(json_object *root, u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 {
 	u8 *data;
 	int i = 0;
-	json_object *root = NULL;
-
-	if (opt.flags & FLAG_JSON) {
-		root = json_object_new_object();
-	}
 
 	/* First pass: Save specific values needed to decode OEM types */
 	data = buf;
@@ -5677,7 +5672,7 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 
 	/* Second pass: Actually decode the data */
 	json_object *array = NULL;
-	if (opt.flags & FLAG_JSON) {
+	if (opt.flags & FLAG_JSON && root != NULL) {
 		array = json_object_new_array();
 	}
 	i = 0;
@@ -5791,11 +5786,6 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 	if (opt.flags & FLAG_JSON) {
 		/* Add array of decoded entries */
 		json_object_object_add(root, "data", array);
-
-		/* Print json object to stdout */
-		printf("%s\n", json_object_to_json_string_ext(root, JSON_C_TO_STRING_PRETTY));
-
-		json_object_put(root);
 	}
 
 	/*
@@ -5911,7 +5901,7 @@ static void overwrite_smbios3_address(u8 *buf)
 	buf[0x17] = 0;
 }
 
-static int smbios3_decode(u8 *buf, size_t buf_len, const char *devmem, u32 flags)
+static int smbios3_decode(json_object *root, u8 *buf, size_t buf_len, const char *devmem, u32 flags)
 {
 	u32 ver, len;
 	u64 offset;
@@ -5931,9 +5921,13 @@ static int smbios3_decode(u8 *buf, size_t buf_len, const char *devmem, u32 flags
 		return 0;
 
 	ver = (buf[0x07] << 16) + (buf[0x08] << 8) + buf[0x09];
-	if (!(opt.flags & FLAG_QUIET))
+	if (!(opt.flags & FLAG_QUIET)) {
 		pr_info("SMBIOS %u.%u.%u present.",
-			buf[0x07], buf[0x08], buf[0x09]);
+				buf[0x07], buf[0x08], buf[0x09]);
+		if (opt.flags & FLAG_JSON) {
+			pr_json_info(root, "smbios_version", "%u.%u.%u", buf[0x07], buf[0x08], buf[0x09]);
+		}
+	}
 
 	offset = QWORD(buf + 0x10);
 	if (!(flags & FLAG_NO_FILE_OFFSET) && offset.h && sizeof(off_t) < 8)
@@ -5960,7 +5954,7 @@ static int smbios3_decode(u8 *buf, size_t buf_len, const char *devmem, u32 flags
 	}
 	else
 	{
-		dmi_table_decode(table, len, 0, ver >> 8,
+		dmi_table_decode(root, table, len, 0, ver >> 8,
 				 flags | FLAG_STOP_AT_EOT);
 	}
 
@@ -5992,7 +5986,7 @@ static void dmi_fixup_version(u16 *ver)
 	}
 }
 
-static int smbios_decode(u8 *buf, size_t buf_len, const char *devmem, u32 flags)
+static int smbios_decode(json_object *root, u8 *buf, size_t buf_len, const char *devmem, u32 flags)
 {
 	u16 ver, num;
 	u32 len;
@@ -6020,9 +6014,13 @@ static int smbios_decode(u8 *buf, size_t buf_len, const char *devmem, u32 flags)
 	ver = (buf[0x06] << 8) + buf[0x07];
 	if (!(opt.flags & FLAG_NO_QUIRKS))
 		dmi_fixup_version(&ver);
-	if (!(opt.flags & FLAG_QUIET))
+	if (!(opt.flags & FLAG_QUIET)) {
 		pr_info("SMBIOS %u.%u present.",
-			ver >> 8, ver & 0xFF);
+				ver >> 8, ver & 0xFF);
+		if (opt.flags & FLAG_JSON && root != NULL) {
+			pr_json_info(root, "smbios_version", "%u.%u", ver >> 8, ver & 0xFF);
+		}
+	}
 
 	/* Maximum length, may get trimmed */
 	len = WORD(buf + 0x16);
@@ -6043,7 +6041,7 @@ static int smbios_decode(u8 *buf, size_t buf_len, const char *devmem, u32 flags)
 	}
 	else
 	{
-		dmi_table_decode(table, len, num, ver, flags);
+		dmi_table_decode(root, table, len, num, ver, flags);
 	}
 
 	free(table);
@@ -6051,7 +6049,7 @@ static int smbios_decode(u8 *buf, size_t buf_len, const char *devmem, u32 flags)
 	return 1;
 }
 
-static int legacy_decode(u8 *buf, const char *devmem, u32 flags)
+static int legacy_decode(json_object *root, u8 *buf, const char *devmem, u32 flags)
 {
 	u16 ver, num;
 	u32 len;
@@ -6061,9 +6059,14 @@ static int legacy_decode(u8 *buf, const char *devmem, u32 flags)
 		return 0;
 
 	ver = ((buf[0x0E] & 0xF0) << 4) + (buf[0x0E] & 0x0F);
-	if (!(opt.flags & FLAG_QUIET))
+	if (!(opt.flags & FLAG_QUIET)) {
 		pr_info("Legacy DMI %u.%u present.",
-			buf[0x0E] >> 4, buf[0x0E] & 0x0F);
+				buf[0x0E] >> 4, buf[0x0E] & 0x0F);
+		if (opt.flags & FLAG_JSON && root != NULL) {
+			pr_json_info(root, "legacy_dmi_version", "%u.%u",
+						 buf[0x0E] >> 4, buf[0x0E] & 0x0F);
+		}
+	}
 
 	/* Maximum length, may get trimmed */
 	len = WORD(buf + 0x06);
@@ -6084,7 +6087,7 @@ static int legacy_decode(u8 *buf, const char *devmem, u32 flags)
 	}
 	else
 	{
-		dmi_table_decode(table, len, num, ver, flags);
+		dmi_table_decode(root, table, len, num, ver, flags);
 	}
 
 	free(table);
@@ -6180,6 +6183,7 @@ int main(int argc, char * const argv[])
 	size_t size;
 	int efi;
 	u8 *buf = NULL;
+	json_object *root = NULL;
 
 	/*
 	 * We don't want stdout and stderr to be mixed up if both are
@@ -6219,10 +6223,15 @@ int main(int argc, char * const argv[])
 
 	if (opt.flags & FLAG_JSON) {
 		pr_set_json_format();
+		root = json_object_new_object();
 	}
 
-	if (!(opt.flags & FLAG_QUIET))
+	if (!(opt.flags & FLAG_QUIET)) {
 		pr_comment("dmidecode %s", VERSION);
+		if (opt.flags & FLAG_JSON && root != NULL) {
+			json_object_object_add(root, "dmidecode_version", json_object_new_string(VERSION));
+		}
+	}
 
 	/* Read from dump if so instructed */
 	size = 0x20;
@@ -6246,17 +6255,17 @@ int main(int argc, char * const argv[])
 
 		if (memcmp(buf, "_SM3_", 5) == 0)
 		{
-			if (smbios3_decode(buf, size, opt.dumpfile, 0))
+			if (smbios3_decode(root, buf, size, opt.dumpfile, 0))
 				found++;
 		}
 		else if (memcmp(buf, "_SM_", 4) == 0)
 		{
-			if (smbios_decode(buf, size, opt.dumpfile, 0))
+			if (smbios_decode(root, buf, size, opt.dumpfile, 0))
 				found++;
 		}
 		else if (memcmp(buf, "_DMI_", 5) == 0)
 		{
-			if (legacy_decode(buf, opt.dumpfile, 0))
+			if (legacy_decode(root, buf, opt.dumpfile, 0))
 				found++;
 		}
 		goto done;
@@ -6274,17 +6283,17 @@ int main(int argc, char * const argv[])
 			pr_info("Getting SMBIOS data from sysfs.");
 		if (size >= 24 && memcmp(buf, "_SM3_", 5) == 0)
 		{
-			if (smbios3_decode(buf, size, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
+			if (smbios3_decode(root, buf, size, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
 				found++;
 		}
 		else if (size >= 31 && memcmp(buf, "_SM_", 4) == 0)
 		{
-			if (smbios_decode(buf, size, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
+			if (smbios_decode(root, buf, size, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
 				found++;
 		}
 		else if (size >= 15 && memcmp(buf, "_DMI_", 5) == 0)
 		{
-			if (legacy_decode(buf, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
+			if (legacy_decode(root, buf, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
 				found++;
 		}
 
@@ -6316,12 +6325,12 @@ int main(int argc, char * const argv[])
 
 	if (memcmp(buf, "_SM3_", 5) == 0)
 	{
-		if (smbios3_decode(buf, 0x20, opt.devmem, 0))
+		if (smbios3_decode(root, buf, 0x20, opt.devmem, 0))
 			found++;
 	}
 	else if (memcmp(buf, "_SM_", 4) == 0)
 	{
-		if (smbios_decode(buf, 0x20, opt.devmem, 0))
+		if (smbios_decode(root, buf, 0x20, opt.devmem, 0))
 			found++;
 	}
 	goto done;
@@ -6342,7 +6351,7 @@ memory_scan:
 	{
 		if (memcmp(buf + fp, "_SM3_", 5) == 0)
 		{
-			if (smbios3_decode(buf + fp, 0x20, opt.devmem, 0))
+			if (smbios3_decode(root, buf + fp, 0x20, opt.devmem, 0))
 			{
 				found++;
 				goto done;
@@ -6355,7 +6364,7 @@ memory_scan:
 	{
 		if (memcmp(buf + fp, "_SM_", 4) == 0 && fp <= 0xFFE0)
 		{
-			if (smbios_decode(buf + fp, 0x20, opt.devmem, 0))
+			if (smbios_decode(root, buf + fp, 0x20, opt.devmem, 0))
 			{
 				found++;
 				goto done;
@@ -6363,7 +6372,7 @@ memory_scan:
 		}
 		else if (memcmp(buf + fp, "_DMI_", 5) == 0)
 		{
-			if (legacy_decode(buf + fp, opt.devmem, 0))
+			if (legacy_decode(root, buf + fp, opt.devmem, 0))
 			{
 				found++;
 				goto done;
@@ -6375,6 +6384,11 @@ memory_scan:
 done:
 	if (!found && !(opt.flags & FLAG_QUIET))
 		pr_comment("No SMBIOS nor DMI entry point found, sorry.");
+
+	if (opt.flags & FLAG_JSON) {
+		printf("%s\n", json_object_to_json_string_ext(root, JSON_C_TO_STRING_PRETTY));
+		ret = json_object_put(root);
+	}
 
 	free(buf);
 exit_free:

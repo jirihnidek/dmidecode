@@ -68,6 +68,24 @@ void pr_info(const char *format, ...)
 	}
 }
 
+void pr_json_info(json_object *root, const char *key, const char *format, ...) {
+	va_list args;
+	if (output_format == JSON_FORMAT && root != NULL) {
+		int ret;
+		char *str;
+		va_start(args, format);
+		ret = vasprintf(&str, format, args);
+		va_end(args);
+		if (ret != -1) {
+			ret = json_object_object_add(root, key, json_object_new_string(str));
+			if (ret < 0) {
+				fprintf(stderr, "Unable to add JSON object: '%s' with key: '%s'\n", str, key);
+			}
+			free(str);
+		}
+	}
+}
+
 void pr_handle(json_object *item, const struct dmi_header *h)
 {
 	if (output_format == TEXT_FORMAT) {
