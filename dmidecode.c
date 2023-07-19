@@ -5672,7 +5672,7 @@ static void dmi_table_decode(json_object *root, u8 *buf, u32 len, u16 num, u16 v
 
 	/* Second pass: Actually decode the data */
 	json_object *array = NULL;
-	if (opt.flags & FLAG_JSON && root != NULL) {
+	if (opt.flags & FLAG_JSON) {
 		array = json_object_new_array();
 	}
 	i = 0;
@@ -6017,7 +6017,7 @@ static int smbios_decode(json_object *root, u8 *buf, size_t buf_len, const char 
 	if (!(opt.flags & FLAG_QUIET)) {
 		pr_info("SMBIOS %u.%u present.",
 				ver >> 8, ver & 0xFF);
-		if (opt.flags & FLAG_JSON && root != NULL) {
+		if (opt.flags & FLAG_JSON) {
 			pr_json_info(root, "smbios_version", "%u.%u", ver >> 8, ver & 0xFF);
 		}
 	}
@@ -6062,7 +6062,7 @@ static int legacy_decode(json_object *root, u8 *buf, const char *devmem, u32 fla
 	if (!(opt.flags & FLAG_QUIET)) {
 		pr_info("Legacy DMI %u.%u present.",
 				buf[0x0E] >> 4, buf[0x0E] & 0x0F);
-		if (opt.flags & FLAG_JSON && root != NULL) {
+		if (opt.flags & FLAG_JSON) {
 			pr_json_info(root, "legacy_dmi_version", "%u.%u",
 						 buf[0x0E] >> 4, buf[0x0E] & 0x0F);
 		}
@@ -6228,7 +6228,7 @@ int main(int argc, char * const argv[])
 
 	if (!(opt.flags & FLAG_QUIET)) {
 		pr_comment("dmidecode %s", VERSION);
-		if (opt.flags & FLAG_JSON && root != NULL) {
+		if (opt.flags & FLAG_JSON) {
 			json_object_object_add(root, "dmidecode_version", json_object_new_string(VERSION));
 		}
 	}
