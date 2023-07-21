@@ -21,6 +21,7 @@
 #ifndef DMIDECODE_H
 #define DMIDECODE_H
 
+#include <json-c/json.h>
 #include "types.h"
 
 struct dmi_header
@@ -47,8 +48,8 @@ extern enum cpuid_type cpuid_type;
 
 int is_printable(const u8 *data, int len);
 const char *dmi_string(const struct dmi_header *dm, u8 s);
-void dmi_print_memory_size(const char *addr, u64 code, int shift);
-void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...),
-		     const char *label, enum cpuid_type sig, const u8 *p);
+void dmi_print_memory_size(json_object *entry, const char *addr, u64 code, int shift);
+void dmi_print_cpuid(void (*print_cb)(json_object *entry, const char *name, const char *format, ...),
+						json_object *entry, const char *label, enum cpuid_type sig, const u8 *p);
 
 #endif

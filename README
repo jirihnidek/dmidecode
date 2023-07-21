@@ -19,6 +19,12 @@ Dmidecode does not scan your hardware, it only reports what the BIOS told it
 to.
 
 
+** REQUIREMETS **
+
+Compilation of dmidecode requires library json-c. This library can be
+downloaded from https://github.com/json-c/json-c. This library is used
+for generating machine readable output of dmidecode.
+
 ** INSTALLATION **
 
 The home web page for dmidecode is hosted on Savannah:
