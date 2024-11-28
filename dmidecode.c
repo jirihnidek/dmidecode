@@ -6218,6 +6218,8 @@ int main(int argc, char * const argv[])
 		goto exit_free;
 	}
 
+	set_output_format(OFMT_PLAIN_TEXT);
+
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);
 
