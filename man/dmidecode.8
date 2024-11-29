@@ -187,6 +187,10 @@ Only display the value of the \s-1OEM\s0 string number \fIN\fP. The first
 \s-1OEM\s0 string has number \fB1\fP. With special value \fBcount\fP, return the
 number of OEM strings instead.
 .TP
+.BR "-j" ", " "--json"
+Dump DMI data into JSON machine readable format. This CLI options is available,
+when dmidecode is build with support of json-c library.
+.TP
 .BR "-h" ", " "--help"
 Display usage information and exit
 .TP
@@ -198,6 +202,12 @@ Options
 .BR --type,
 .BR --dump-bin " and " --oem-string
 determine the output format and are mutually exclusive.
+.P
+Options
+.BR --quiet,
+.BR --string,
+.BR --oem-string " and " --json
+determine the output format and are also mutually exclusive.
 .P
 Please note in case of
 .B dmidecode
