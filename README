@@ -49,6 +49,11 @@ both (but I am not aware of SPARC-based systems implementing SMBIOS).
 Compiling for an IA64 processor requires the memory alignment workaround,
 and it is enabled automatically.
 
+It is possible to build dmidecode with optional support for machine
+readable JSON format. The json-c (https://github.com/json-c/json-c)
+is used. To enable this feature json-c has to be installed on the
+system and dmidecode has to be build using:
+"CFLAGS="-DWITH_JSON_C" LDFLAGS="-ljson-c" make"
 
 ** DOCUMENTATION **
 
