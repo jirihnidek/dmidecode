@@ -389,6 +389,20 @@ int parse_command_line(int argc, char * const argv[])
 		return -1;
 	}
 
+#ifdef WITH_JSON_C
+	if ((opt.flags & FLAG_JSON) && (opt.flags & FLAG_QUIET))
+	{
+		fprintf(stderr, "Options --quiet/--string/--oem-string and --json are mutually exclusive\n");
+		return -1;
+	}
+
+	if ((opt.flags & FLAG_JSON) && (opt.flags & FLAG_DUMP_BIN))
+	{
+		fprintf(stderr, "Options --json and --dump-bin are mutually exclusive\n");
+		return -1;
+	}
+#endif
+
 	return 0;
 }
 
