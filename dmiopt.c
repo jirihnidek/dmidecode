@@ -266,7 +266,11 @@ int parse_command_line(int argc, char * const argv[])
 {
 	int option;
 	unsigned int i;
+#ifdef WITH_JSON_C
+	const char *optstring = "d:hqs:t:uH:jV";
+#else
 	const char *optstring = "d:hqs:t:uH:V";
+#endif
 	struct option longopts[] = {
 		{ "dev-mem", required_argument, NULL, 'd' },
 		{ "help", no_argument, NULL, 'h' },
@@ -282,6 +286,9 @@ int parse_command_line(int argc, char * const argv[])
 		{ "no-sysfs", no_argument, NULL, 'S' },
 		{ "list-strings", no_argument, NULL, 'L' },
 		{ "list-types", no_argument, NULL, 'T' },
+#ifdef WITH_JSON_C
+		{ "json", no_argument, NULL, 'j' },
+#endif
 		{ "version", no_argument, NULL, 'V' },
 		{ NULL, 0, NULL, 0 }
 	};
@@ -345,6 +352,11 @@ int parse_command_line(int argc, char * const argv[])
 					fprintf(stdout, "%s\n", opt_type_keyword[i].keyword);
 				opt.flags |= FLAG_LIST;
 				return 0;
+#ifdef WITH_JSON_C
+			case 'j':
+				opt.flags |= FLAG_JSON;
+				break;
+#endif
 			case 'V':
 				opt.flags |= FLAG_VERSION;
 				break;
@@ -377,6 +389,20 @@ int parse_command_line(int argc, char * const argv[])
 		return -1;
 	}
 
+#ifdef WITH_JSON_C
+	if ((opt.flags & FLAG_JSON) && (opt.flags & FLAG_QUIET))
+	{
+		fprintf(stderr, "Options --quiet/--string/--oem-string and --json are mutually exclusive\n");
+		return -1;
+	}
+
+	if ((opt.flags & FLAG_JSON) && (opt.flags & FLAG_DUMP_BIN))
+	{
+		fprintf(stderr, "Options --json and --dump-bin are mutually exclusive\n");
+		return -1;
+	}
+#endif
+
 	return 0;
 }
 
@@ -399,6 +425,9 @@ void print_help(void)
 		"     --from-dump FILE   Read the DMI data from a binary file\n"
 		"     --no-sysfs         Do not attempt to read DMI data from sysfs files\n"
 		"     --oem-string N     Only display the value of the given OEM string\n"
+#ifdef WITH_JSON_C
+		" -j, --json             Output information in JSON format\n"
+#endif
 		" -V, --version          Display the version and exit\n";
 
 	printf("%s", help);
