@@ -6218,7 +6218,16 @@ int main(int argc, char * const argv[])
 		goto exit_free;
 	}
 
+#ifdef WITH_JSON_C
+	if (opt.flags & FLAG_JSON)
+	{
+		set_output_format(OFMT_JSON);
+	} else {
+		set_output_format(OFMT_PLAIN_TEXT);
+	}
+#else
 	set_output_format(OFMT_PLAIN_TEXT);
+#endif
 
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);
