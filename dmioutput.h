@@ -32,3 +32,24 @@ void pr_list_item(const char *format, ...);
 void pr_list_end(void);
 void pr_sep(void);
 void pr_struct_err(const char *format, ...);
+
+#define OFMT_PLAIN_TEXT                0
+
+struct ofmt
+{
+	void (*pr_comment)(const char *format, va_list args);
+	void (*pr_info)(const char *format, va_list args);
+	void (*pr_handle)(const struct dmi_header *h);
+	void (*pr_handle_name)(const char *format, va_list args);
+	void (*pr_attr)(const char *name, const char *format, va_list args);
+	void (*pr_subattr)(const char *name, const char *format, va_list args);
+	void (*pr_list_start)(const char *name, const char *format, va_list args);
+	void (*pr_list_item)(const char *format, va_list args);
+	void (*pr_list_end)(void);
+	void (*pr_sep)(void);
+	void (*pr_struct_err)(const char *format, va_list args);
+};
+
+extern struct ofmt *ofmt;
+
+void set_output_format(int ofmt);
