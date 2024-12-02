@@ -46,6 +46,7 @@ typedef struct json_dmi_output {
 	json_object *array;
 	json_object *item;
 	json_object *values;
+	json_object *list;
 } json_dmi_output;
 #endif
 

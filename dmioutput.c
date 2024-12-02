@@ -137,6 +137,7 @@ json_dmi_output json_dmi_out = {
 	.array = NULL,
 	.item = NULL,
 	.values = NULL,
+	.list = NULL,
 };
 
 static void pr_init_json(void)
@@ -286,19 +287,87 @@ static void pr_subattr_json(const char *name, const char *format, va_list args)
 
 static void pr_list_start_json(const char *name, const char *format, va_list args)
 {
-	(void)name;
-	(void)format;
-	(void)args;
+	char *key = NULL;
+	if (format != NULL)
+	{
+		char *str=NULL;
+		int ret;
+		ret = vasprintf(&str, format, args);
+		if (ret != -1)
+		{
+			/* try to create key from name and format string */
+			size_t len_name = strlen(name);
+			size_t len_str = strlen(str);
+			key = malloc(len_name + len_str + 1);
+			if (key != NULL)
+			{
+				key[0] = '\0';
+				strcpy(key, name);
+				strcat(key, str);
+			}
+			else
+			{
+				fprintf(stderr, "Unable to allocate memory (size: %ld) for JSON key\n", len_name + len_str + 1);
+			}
+			free(str);
+		}
+		else
+		{
+			fprintf(stderr, "Unable to create JSON key from name: '%s' and format: '%s'\n", name, format);
+		}
+	}
+	else
+	{
+		key = strdup(name);
+	}
+	if (key != NULL)
+	{
+		json_dmi_out.list = json_object_new_array();
+		int i;
+		/* Convert key to lowercase and replace " " with "_" */
+		for (i = 0; key[i]; i++)
+		{
+			if (key[i] == ' ')
+			{
+				key[i] = '_';
+			}
+			else
+			{
+				key[i] = tolower(key[i]);
+			}
+		}
+		json_object_object_add(json_dmi_out.values, key, json_dmi_out.list);
+		free(key);
+	}
 }
 
 static void pr_list_item_json(const char *format, va_list args)
 {
-	(void)format;
-	(void)args;
+	char *str = NULL;
+	int ret;
+	if (json_dmi_out.list)
+	{
+		ret = vasprintf(&str, format, args);
+		if (ret != -1)
+		{
+			json_object_array_add(json_dmi_out.list, json_object_new_string(str));
+			free(str);
+		}
+	}
+	else
+	{
+		ret = vasprintf(&str, format, args);
+		if (ret != -1)
+		{
+			fprintf(stderr, "Unable to add JSON item '%s' to the non existing list\n", str);
+			free(str);
+		}
+	}
 }
 
 static void pr_list_end_json(void)
 {
+	json_dmi_out.list = NULL;
 }
 
 static void pr_sep_json(void)
