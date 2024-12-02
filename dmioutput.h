@@ -34,6 +34,9 @@ void pr_sep(void);
 void pr_struct_err(const char *format, ...);
 
 #define OFMT_PLAIN_TEXT                0
+#ifdef WITH_JSON_C
+#define OFMT_JSON                      1
+#endif
 
 struct ofmt
 {
