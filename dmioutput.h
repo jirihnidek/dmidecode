@@ -19,8 +19,13 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#ifdef WITH_JSON_C
+#include <json-c/json.h>
+#endif
 #include "dmidecode.h"
 
+void pr_init(void);
+void pr_finish(void);
 void pr_comment(const char *format, ...);
 void pr_info(const char *format, ...);
 void pr_handle(const struct dmi_header *h);
@@ -36,10 +41,18 @@ void pr_struct_err(const char *format, ...);
 #define OFMT_PLAIN_TEXT                0
 #ifdef WITH_JSON_C
 #define OFMT_JSON                      1
+typedef struct json_dmi_output {
+	json_object *root;
+	json_object *array;
+	json_object *item;
+	json_object *values;
+} json_dmi_output;
 #endif
 
 struct ofmt
 {
+	void (*pr_init)(void);
+	void (*pr_finish)(void);
 	void (*pr_comment)(const char *format, va_list args);
 	void (*pr_info)(const char *format, va_list args);
 	void (*pr_handle)(const struct dmi_header *h);
