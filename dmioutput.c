@@ -23,6 +23,8 @@
 #include <stdio.h>
 #ifdef WITH_JSON_C
 #include <json-c/json.h>
+#include <string.h>
+#include <ctype.h>
 #endif
 #include "dmioutput.h"
 
@@ -200,6 +202,11 @@ static void pr_handle_json(const struct dmi_header *h)
 	{
 		json_object_object_add(json_dmi_out.item, "active", json_object_new_boolean(1));
 	}
+
+	json_dmi_out.values = json_object_new_object();
+	ret = json_object_object_add(json_dmi_out.item, "values", json_dmi_out.values);
+	if (ret < 0)
+		fprintf(stderr, "Unable to add JSON object with key: 'values'\n");
 }
 
 static void pr_handle_name_json(const char *format, va_list args)
@@ -230,18 +237,51 @@ static void pr_handle_name_json(const char *format, va_list args)
 	}
 }
 
+static void attr_json(const char *name, const char *format, va_list args) {
+	char *str = NULL;
+	int ret;
+	ret = vasprintf(&str, format, args);
+	if (ret != -1)
+	{
+		/* Convert name to lowercase and replace " " with "_" */
+		char *key = strdup(name);
+		if (key != NULL)
+		{
+			int i;
+			for (i = 0; key[i]; i++)
+			{
+				if (key[i] == ' ')
+				{
+					key[i] = '_';
+				}
+				else
+				{
+					key[i] = tolower(key[i]);
+				}
+			}
+			ret = json_object_object_add(json_dmi_out.values, key, json_object_new_string(str));
+			if (ret < 0)
+				fprintf(stderr, "Unable to add JSON object: '%s' with key: '%s'\n", str, key);
+			free(key);
+		}
+		else
+		{
+			fprintf(stderr, "Unable to create JSON key: '%s'\n", name);
+		}
+		free(str);
+	} else {
+		fprintf(stderr, "Unable to create JSON key from name: '%s' and format: '%s'\n", name, format);
+	}
+}
+
 static void pr_attr_json(const char *name, const char *format, va_list args)
 {
-	(void)name;
-	(void)format;
-	(void)args;
+	attr_json(name, format, args);
 }
 
 static void pr_subattr_json(const char *name, const char *format, va_list args)
 {
-	(void)name;
-	(void)format;
-	(void)args;
+	attr_json(name, format, args);
 }
 
 static void pr_list_start_json(const char *name, const char *format, va_list args)
