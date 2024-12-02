@@ -6229,6 +6229,8 @@ int main(int argc, char * const argv[])
 	set_output_format(OFMT_PLAIN_TEXT);
 #endif
 
+	pr_init();
+
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);
 
@@ -6387,6 +6389,8 @@ done:
 	free(buf);
 exit_free:
 	free(opt.type);
+
+	pr_finish();
 
 	return ret;
 }
