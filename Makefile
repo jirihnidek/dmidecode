@@ -26,9 +26,12 @@ CFLAGS += -D_FILE_OFFSET_BITS=64
 
 #CFLAGS += -DBIGENDIAN
 #CFLAGS += -DALIGNMENT_WORKAROUND
+#CFLAGS += -DWITH_JSON_C
 
 # Pass linker flags here (can be set from environment too)
 LDFLAGS ?=
+
+#LDFLAGS += -ljson-c
 
 DESTDIR =
 prefix  = /usr/local

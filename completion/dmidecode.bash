@@ -50,6 +50,7 @@ _comp_cmd_dmidecode() {
 			--from-dump
 			--no-sysfs
 			--oem-string
+			--json
 			--version
 		' -- "$cur"))
 		return 0

@@ -4467,11 +4467,11 @@ static void dmi_decode(const struct dmi_header *h, u16 ver)
 			dmi_bios_rom_size(data[0x09], h->length < 0x1A ? 16 : WORD(data + 0x18));
 			pr_list_start("Characteristics", NULL);
 			dmi_bios_characteristics(QWORD(data + 0x0A));
-			pr_list_end();
 			if (h->length < 0x13) break;
 			dmi_bios_characteristics_x1(data[0x12]);
 			if (h->length < 0x14) break;
 			dmi_bios_characteristics_x2(data[0x13]);
+			pr_list_end();
 			if (h->length < 0x18) break;
 			if (data[0x14] != 0xFF && data[0x15] != 0xFF)
 				pr_attr("BIOS Revision", "%u.%u",
@@ -6218,6 +6218,19 @@ int main(int argc, char * const argv[])
 		goto exit_free;
 	}
 
+#ifdef WITH_JSON_C
+	if (opt.flags & FLAG_JSON)
+	{
+		set_output_format(OFMT_JSON);
+	} else {
+		set_output_format(OFMT_PLAIN_TEXT);
+	}
+#else
+	set_output_format(OFMT_PLAIN_TEXT);
+#endif
+
+	pr_init();
+
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);
 
@@ -6376,6 +6389,8 @@ done:
 	free(buf);
 exit_free:
 	free(opt.type);
+
+	pr_finish();
 
 	return ret;
 }
