@@ -21,6 +21,10 @@ CFLAGS ?= -O2
 CFLAGS += -W -Wall -Wshadow -Wstrict-prototypes -Wpointer-arith -Wcast-qual \
           -Wcast-align -Wwrite-strings -Wmissing-prototypes -Winline -Wundef
 
+# By default we include support for JSON output, can be overridden on
+# the command line
+WITH_JSON ?= 1
+
 # Let lseek and mmap support 64-bit wide offsets
 CFLAGS += -D_FILE_OFFSET_BITS=64
 
@@ -29,6 +33,11 @@ CFLAGS += -D_FILE_OFFSET_BITS=64
 
 # Pass linker flags here (can be set from environment too)
 LDFLAGS ?=
+
+ifeq ($(WITH_JSON),1)
+CFLAGS += -DWITH_JSON_C
+LDFLAGS += -ljson-c
+endif
 
 DESTDIR =
 prefix  = /usr/local
