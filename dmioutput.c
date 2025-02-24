@@ -23,6 +23,8 @@
 #ifdef WITH_JSON_C
 #define _GNU_SOURCE
 #include <json-c/json.h>
+#include <string.h>
+#include <ctype.h>
 #endif
 #include <stdio.h>
 #include "dmioutput.h"
@@ -193,6 +195,11 @@ static void pr_handle_json(const struct dmi_header *h)
 	{
 		json_object_object_add(json_context.item, "active", json_object_new_boolean(1));
 	}
+
+	json_context.values = json_object_new_object();
+	ret = json_object_object_add(json_context.item, "values", json_context.values);
+	if (ret < 0)
+		fprintf(stderr, "Unable to add JSON object with key: 'values'\n");
 }
 
 static void pr_handle_name_json(const char *format, va_list args)
@@ -215,18 +222,31 @@ static void pr_handle_name_json(const char *format, va_list args)
 	}
 }
 
+static void attr_json(const char *name, const char *format, va_list args)
+{
+	char *str = NULL;
+	int ret;
+
+	ret = vasprintf(&str, format, args);
+	if (ret != -1)
+	{
+		ret = json_object_object_add(json_context.values, name, json_object_new_string(str));
+		if (ret < 0)
+			fprintf(stderr, "Unable to add JSON object: '%s' with key: '%s'\n", str, name);
+		free(str);
+	} else {
+		fprintf(stderr, "Unable to create JSON key from name: '%s' and format: '%s'\n", name, format);
+	}
+}
+
 static void pr_attr_json(const char *name, const char *format, va_list args)
 {
-	(void)name;
-	(void)format;
-	(void)args;
+	attr_json(name, format, args);
 }
 
 static void pr_subattr_json(const char *name, const char *format, va_list args)
 {
-	(void)name;
-	(void)format;
-	(void)args;
+	attr_json(name, format, args);
 }
 
 static void pr_list_start_json(const char *name, const char *format, va_list args)
