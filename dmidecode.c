@@ -6245,6 +6245,8 @@ int main(int argc, char * const argv[])
 	set_output_format(OFMT_PLAIN_TEXT);
 #endif
 
+	pr_init();
+
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);
 
@@ -6401,6 +6403,8 @@ done:
 		pr_comment("No SMBIOS nor DMI entry point found, sorry.");
 
 	free(buf);
+
+	pr_finish();
 exit_free:
 	free(opt.type);
 
