@@ -251,19 +251,42 @@ static void pr_subattr_json(const char *name, const char *format, va_list args)
 
 static void pr_list_start_json(const char *name, const char *format, va_list args)
 {
-	(void)name;
+	// All calls of pr_list_start() uses the format and args for number of items in
+	// the list. Such information is useless, when machine-readable output is used.
 	(void)format;
 	(void)args;
+
+	json_context.list = json_object_new_array();
+	json_object_object_add(json_context.values, name, json_context.list);
 }
 
 static void pr_list_item_json(const char *format, va_list args)
 {
-	(void)format;
-	(void)args;
+	char *str = NULL;
+	int ret;
+	if (json_context.list)
+	{
+		ret = vasprintf(&str, format, args);
+		if (ret != -1)
+		{
+			json_object_array_add(json_context.list, json_object_new_string(str));
+			free(str);
+		}
+	}
+	else
+	{
+		ret = vasprintf(&str, format, args);
+		if (ret != -1)
+		{
+			fprintf(stderr, "Unable to add JSON item '%s' to the non existing list\n", str);
+			free(str);
+		}
+	}
 }
 
 static void pr_list_end_json(void)
 {
+	json_context.list = NULL;
 }
 
 static void pr_sep_json(void)

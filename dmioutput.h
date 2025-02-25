@@ -46,6 +46,7 @@ struct json_context {
 	json_object *records;
 	json_object *item;
 	json_object *values;
+	json_object *list;
 };
 #endif
 
