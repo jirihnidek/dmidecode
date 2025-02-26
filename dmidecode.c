@@ -1010,6 +1010,15 @@ static const char *dmi_processor_family(const struct dmi_header *h, u16 ver)
 		{ 0x26F, "Multi-Core Loongson 3B 5xxx" },
 		{ 0x270, "Multi-Core Loongson 3C 5xxx" },
 		{ 0x271, "Multi-Core Loongson 3D 5xxx" },
+
+		{ 0x300, "Core 3" },
+		{ 0x301, "Core 5" },
+		{ 0x302, "Core 7" },
+		{ 0x303, "Core 9" },
+		{ 0x304, "Core Ultra 3" },
+		{ 0x305, "Core Ultra 5" },
+		{ 0x306, "Core Ultra 7" },
+		{ 0x307, "Core Ultra 9" },
 	};
 	/*
 	 * Note to developers: when adding entries to this list, check if
@@ -1462,10 +1471,17 @@ static const char *dmi_processor_upgrade(u8 code)
 		"Socket BGA1190",
 		"Socket BGA4129",
 		"Socket LGA4710",
-		"Socket LGA7529" /* 0x50 */
+		"Socket LGA7529",
+		"Socket BGA1964",
+		"Socket BGA1792",
+		"Socket BGA2049",
+		"Socket BGA2551",
+		"Socket LGA1851",
+		"Socket BGA2114",
+		"Socket BGA2833" /* 0x57 */
 	};
 
-	if (code >= 0x01 && code <= 0x50)
+	if (code >= 0x01 && code <= 0x57)
 		return upgrade[code - 0x01];
 	return out_of_spec;
 }
@@ -4467,11 +4483,11 @@ static void dmi_decode(const struct dmi_header *h, u16 ver)
 			dmi_bios_rom_size(data[0x09], h->length < 0x1A ? 16 : WORD(data + 0x18));
 			pr_list_start("Characteristics", NULL);
 			dmi_bios_characteristics(QWORD(data + 0x0A));
-			pr_list_end();
 			if (h->length < 0x13) break;
 			dmi_bios_characteristics_x1(data[0x12]);
 			if (h->length < 0x14) break;
 			dmi_bios_characteristics_x2(data[0x13]);
+			pr_list_end();
 			if (h->length < 0x18) break;
 			if (data[0x14] != 0xFF && data[0x15] != 0xFF)
 				pr_attr("BIOS Revision", "%u.%u",
@@ -6218,6 +6234,19 @@ int main(int argc, char * const argv[])
 		goto exit_free;
 	}
 
+#ifdef WITH_JSON_C
+	if (opt.flags & FLAG_JSON)
+	{
+		set_output_format(OFMT_JSON);
+	} else {
+		set_output_format(OFMT_PLAIN_TEXT);
+	}
+#else
+	set_output_format(OFMT_PLAIN_TEXT);
+#endif
+
+	pr_init();
+
 	if (!(opt.flags & FLAG_QUIET))
 		pr_comment("dmidecode %s", VERSION);
 
@@ -6374,6 +6403,8 @@ done:
 		pr_comment("No SMBIOS nor DMI entry point found, sorry.");
 
 	free(buf);
+
+	pr_finish();
 exit_free:
 	free(opt.type);
 
